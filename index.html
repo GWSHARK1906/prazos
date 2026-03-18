@@ -807,8 +807,8 @@ function isUtil(d) {
 
 function somarDiasUteis(dataStr, n) {
   let d = new Date(dataStr + 'T12:00:00');
-  let cont = 1; // dia 1 = próprio dia (se útil)
-  if (!isUtil(d)) cont = 0;
+  // dia da publicação = dia 1 (se útil), senão começa do zero
+  let cont = isUtil(d) ? 1 : 0;
   while (cont < n) {
     d.setDate(d.getDate() + 1);
     if (isUtil(d)) cont++;
@@ -833,15 +833,11 @@ function subDiasUteis(dataStr, n) {
 }
 
 function calcDatas(publicacaoStr, dias) {
-  const segura = somarDiasUteis(publicacaoStr, parseInt(dias));
   const legalRaw = somarDiasUteis(publicacaoStr, parseInt(dias));
-  const legal = proxUtil(legalRaw) === legalRaw ? legalRaw : proxUtil(legalRaw);
-  // data segura: sem prorrogação (pode ser fim de semana/feriado)
-  // data legal: com prorrogação
-  const seguraFinal = somarDiasUteis(publicacaoStr, parseInt(dias));
-  // Se data segura for feriado, fica como está (mais conservadora)
+  const legal = proxUtil(legalRaw);
+  const segura = subDiasUteis(legal, 2);
   const alerta = subDiasUteis(legal, 2);
-  return { segura: seguraFinal, legal, alerta };
+  return { segura, legal, alerta };
 }
 
 function fmtDate(str) {
@@ -1272,7 +1268,8 @@ async function buscarProcesso() {
           const data = await buscarDatajud(endpoint, {
             query: { match: { 'partes.advogados.OabNumero': oabNum } },
             size: 10,
-            _source: ['numeroProcesso', 'classe', 'tribunal', 'orgaoJulgador', 'partes', 'dataAjuizamento', 'ultimoMovimento']
+            _source: ['numeroProcesso', 'classe', 'tribunal', 'orgaoJulgador', 'partes', 'dataAjuizamento', 'ultimoMovimento'],
+            stored_fields: ['*']
           });
           if (data.hits?.hits?.length) {
             resultados = resultados.concat(data.hits.hits.map(h => ({ ...h._source, _tribunal: nome })));
@@ -1285,9 +1282,13 @@ async function buscarProcesso() {
       const { endpoint, nome } = typeof trib === 'string' ? TRIBUNAIS[trib] : trib;
       const numLimpo = input.replace(/\D/g, '');
       const data = await buscarDatajud(endpoint, {
-        query: { match: { numeroProcesso: numLimpo } },
+        query: {
+          bool: {
+            must: [{ match: { numeroProcesso: numLimpo } }]
+          }
+        },
         size: 5,
-        _source: ['numeroProcesso', 'classe', 'tribunal', 'orgaoJulgador', 'partes', 'dataAjuizamento', 'ultimoMovimento']
+        _source: true
       });
       if (data.hits?.hits?.length) {
         resultados = data.hits.hits.map(h => ({ ...h._source, _tribunal: nome }));
