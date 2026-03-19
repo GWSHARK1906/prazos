@@ -550,6 +550,23 @@
   .timeline-date { font-family: var(--mono); font-size: 11px; color: var(--text3); }
   .timeline-text { font-size: 13px; margin-top: 1px; }
 
+  /* ABAS DE BUSCA */
+  .busca-tab {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.04em;
+  }
+  .busca-tab:hover { border-color: var(--border2); color: var(--text); }
+  .busca-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
+
   /* BUSCA DATAJUD */
   .busca-card {
     border: 1px solid var(--border);
@@ -594,10 +611,18 @@
 <header>
   <div class="logo">Prazos <span>ESCRITÓRIO</span></div>
   <div class="header-actions">
+    <button class="btn btn-ghost" onclick="atualizarTodos()" id="btnAtualizar" title="Atualizar todos os processos">↻ Atualizar</button>
     <button class="btn btn-ghost" onclick="exportCSV()">↓ Exportar</button>
     <button class="btn btn-primary" onclick="openModal()">+ Novo prazo</button>
   </div>
 </header>
+
+<div id="updateBar" style="display:none;background:var(--accent);color:white;padding:8px 2rem;font-size:12px;font-weight:500;display:flex;align-items:center;gap:10px">
+  <span id="updateBarMsg">Verificando atualizações...</span>
+  <div id="updateProgress" style="flex:1;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden">
+    <div id="updateProgressBar" style="height:100%;background:white;width:0%;transition:width 0.3s"></div>
+  </div>
+</div>
 
 <div class="container">
 
@@ -627,6 +652,7 @@
           <th>Prazo fatal</th>
           <th>Situação</th>
           <th>Dias restantes</th>
+          <th>Verificado</th>
           <th></th>
         </tr>
       </thead>
@@ -653,11 +679,29 @@
       <!-- BUSCA DATAJUD -->
       <div class="form-row">
         <label>Buscar processo</label>
+        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+          <button class="busca-tab active" onclick="setBuscaTab('processo', this)">Nº Processo</button>
+          <button class="busca-tab" onclick="setBuscaTab('oab', this)">OAB</button>
+          <button class="busca-tab" onclick="setBuscaTab('cnpj', this)">CNPJ</button>
+          <button class="busca-tab" onclick="setBuscaTab('cpf', this)">CPF</button>
+        </div>
         <div style="display:flex;gap:8px">
-          <input type="text" id="f_busca" placeholder="Número CNJ ou OAB (ex: 129524)" style="flex:1" onkeydown="if(event.key==='Enter') buscarProcesso()">
+          <input type="text" id="f_busca" placeholder="Número do processo CNJ" style="flex:1" onkeydown="if(event.key==='Enter') buscarProcesso()">
+          <select id="f_oab_uf" style="display:none;width:130px;flex-shrink:0">
+            <option value="">Todos os estados</option>
+            <option value="AC">AC</option><option value="AL">AL</option><option value="AM">AM</option>
+            <option value="AP">AP</option><option value="BA">BA</option><option value="CE">CE</option>
+            <option value="DF">DF</option><option value="ES">ES</option><option value="GO">GO</option>
+            <option value="MA">MA</option><option value="MG">MG</option><option value="MS">MS</option>
+            <option value="MT">MT</option><option value="PA">PA</option><option value="PB">PB</option>
+            <option value="PE">PE</option><option value="PI">PI</option><option value="PR">PR</option>
+            <option value="RJ">RJ</option><option value="RN">RN</option><option value="RO">RO</option>
+            <option value="RR">RR</option><option value="RS">RS</option><option value="SC">SC</option>
+            <option value="SE">SE</option><option value="SP">SP</option><option value="TO">TO</option>
+          </select>
           <button class="btn" style="background:var(--accent);color:white;border-color:var(--accent);white-space:nowrap" onclick="buscarProcesso()" id="btnBuscar">Buscar</button>
         </div>
-        <div class="form-hint">Digite o número do processo (CNJ) ou seu número de OAB para buscar automaticamente</div>
+        <div class="form-hint" id="buscaHint">Ex: 0000000-00.0000.8.13.0024</div>
       </div>
 
       <!-- RESULTADO DA BUSCA -->
@@ -854,13 +898,57 @@ function diasRestantes(dataStr) {
   return diff;
 }
 
-// === DADOS ===
-let processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
+// === BANCO DE DADOS - GOOGLE SHEETS ===
+const SHEETS_API = 'https://script.google.com/macros/s/AKfycbw8yCvPh-cEU-iELV6qCVevx6NsNNdeF1gkUhdiUzVrJy9VDJ3Bt24YtKwB3FNlvLXc7w/exec';
+
+let processos = [];
 let editId = null;
 let filtroAtivo = 'todos';
+let carregando = false;
 
-function salvar() {
+async function carregarDoSheets() {
+  try {
+    const resp = await fetch(SHEETS_API + '?action=listar', {
+      method: 'GET',
+      mode: 'cors',
+    });
+    const data = await resp.json();
+    if (data.processos) {
+      processos = data.processos;
+      localStorage.setItem('prazos_processos', JSON.stringify(processos));
+    }
+  } catch(e) {
+    console.warn('Sheets indisponível, usando cache local:', e);
+    processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
+  }
+}
+
+async function salvar() {
+  // Salvar localmente primeiro (imediato)
   localStorage.setItem('prazos_processos', JSON.stringify(processos));
+}
+
+async function salvarNoSheets(processo) {
+  try {
+    const dados = encodeURIComponent(JSON.stringify(processo));
+    await fetch(`${SHEETS_API}?action=salvar&dados=${dados}`, {
+      method: 'GET',
+      mode: 'no-cors',
+    });
+  } catch(e) {
+    console.warn('Erro ao salvar no Sheets:', e);
+  }
+}
+
+async function excluirDoSheets(id) {
+  try {
+    await fetch(`${SHEETS_API}?action=excluir&id=${id}`, {
+      method: 'GET',
+      mode: 'no-cors',
+    });
+  } catch(e) {
+    console.warn('Erro ao excluir do Sheets:', e);
+  }
 }
 
 function statusCalc(p) {
@@ -948,6 +1036,7 @@ function renderTable() {
       <td><span class="date-cell date-legal">${fmtDate(p.dataLegal)}</span></td>
       <td>${badgeMap[st]}</td>
       <td>${drText}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${p.ultimaVerificacao ? fmtDateHora(p.ultimaVerificacao) : '—'}</td>
       <td onclick="event.stopPropagation()">
         <div class="action-btns">
           <button class="btn-icon" title="Editar" onclick="editarProcesso('${p.id}')">✎</button>
@@ -1065,6 +1154,8 @@ function salvarProcesso() {
   salvar();
   closeModal();
   render();
+  // Salvar no Sheets em background
+  salvarNoSheets(obj);
 }
 
 function editarProcesso(id) {
@@ -1076,6 +1167,8 @@ function excluirProcesso(id) {
   processos = processos.filter(p => p.id !== id);
   salvar();
   render();
+  // Excluir do Sheets em background
+  excluirDoSheets(id);
 }
 
 // === DETALHE ===
@@ -1215,6 +1308,11 @@ const TRIBUNAIS = {
   trt3: { endpoint: 'api_publica_trt3', nome: 'TRT-MG (3ª Região)' },
   jfmg: { endpoint: 'api_publica_jfmg', nome: 'JFMG' },
   trf1: { endpoint: 'api_publica_trf1', nome: 'TRF1' },
+  tjsp: { endpoint: 'api_publica_tjsp', nome: 'TJSP' },
+  tjrj: { endpoint: 'api_publica_tjrj', nome: 'TJRJ' },
+  tjpr: { endpoint: 'api_publica_tjpr', nome: 'TJPR' },
+  trt2: { endpoint: 'api_publica_trt2', nome: 'TRT-SP (2ª Região)' },
+  trt4: { endpoint: 'api_publica_trt4', nome: 'TRT-RS (4ª Região)' },
 };
 
 function detectarTribunal(numProcesso) {
@@ -1244,6 +1342,41 @@ async function buscarDatajud(endpoint, query) {
   return resp.json();
 }
 
+// === ABAS DE BUSCA ===
+let buscaTipoAtivo = 'processo';
+
+const buscaConfig = {
+  processo: {
+    placeholder: 'Ex: 0000000-00.0000.8.13.0024',
+    hint: 'Número do processo no formato CNJ'
+  },
+  oab: {
+    placeholder: 'Ex: 129524',
+    hint: 'Número da OAB (sem o estado)'
+  },
+  cnpj: {
+    placeholder: 'Ex: 00.000.000/0001-00',
+    hint: 'CNPJ da parte (com ou sem formatação)'
+  },
+  cpf: {
+    placeholder: 'Ex: 000.000.000-00',
+    hint: 'CPF da parte (com ou sem formatação)'
+  }
+};
+
+function setBuscaTab(tipo, el) {
+  buscaTipoAtivo = tipo;
+  document.querySelectorAll('.busca-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const cfg = buscaConfig[tipo];
+  document.getElementById('f_busca').placeholder = cfg.placeholder;
+  document.getElementById('buscaHint').textContent = cfg.hint;
+  document.getElementById('f_busca').value = '';
+  document.getElementById('buscaResultado').style.display = 'none';
+  document.getElementById('buscaResultado').innerHTML = '';
+  document.getElementById('f_oab_uf').style.display = tipo === 'oab' ? 'block' : 'none';
+}
+
 async function buscarProcesso() {
   const input = document.getElementById('f_busca').value.trim();
   if (!input) return;
@@ -1258,41 +1391,71 @@ async function buscarProcesso() {
   try {
     let resultados = [];
 
-    if (ehOAB(input)) {
-      // Busca por OAB em todos os tribunais
+    const tribunaisParaBuscar = ['tjmg', 'trt3'];
+    const tribunaisTodos = ['tjmg', 'trt3', 'jfmg', 'trf1', 'tjsp', 'tjrj', 'tjpr', 'trt2', 'trt4'];
+
+    if (buscaTipoAtivo === 'oab') {
       const oabNum = input.replace(/\D/g, '');
-      const tribunaisParaBuscar = ['tjmg', 'trt3'];
+      const oabUf = document.getElementById('f_oab_uf').value;
+      for (const trib of tribunaisTodos) {
+        const { endpoint, nome } = TRIBUNAIS[trib];
+        try {
+          const queryOab = oabUf ? {
+            bool: {
+              must: [
+                { match: { 'partes.advogados.OabNumero': oabNum } },
+                { match: { 'partes.advogados.OabEstado': oabUf } }
+              ]
+            }
+          } : { match: { 'partes.advogados.OabNumero': oabNum } };
+          const data = await buscarDatajud(endpoint, {
+            query: queryOab,
+            size: 10, _source: true
+          });
+          if (data.hits?.hits?.length)
+            resultados = resultados.concat(data.hits.hits.map(h => ({ ...h._source, _tribunal: nome })));
+        } catch(e) {}
+      }
+
+    } else if (buscaTipoAtivo === 'cnpj') {
+      const cnpjNum = input.replace(/\D/g, '');
       for (const trib of tribunaisParaBuscar) {
         const { endpoint, nome } = TRIBUNAIS[trib];
         try {
           const data = await buscarDatajud(endpoint, {
-            query: { match: { 'partes.advogados.OabNumero': oabNum } },
-            size: 10,
-            _source: ['numeroProcesso', 'classe', 'tribunal', 'orgaoJulgador', 'partes', 'dataAjuizamento', 'ultimoMovimento'],
-            stored_fields: ['*']
+            query: { match: { 'partes.documento': cnpjNum } },
+            size: 20, _source: true
           });
-          if (data.hits?.hits?.length) {
+          if (data.hits?.hits?.length)
             resultados = resultados.concat(data.hits.hits.map(h => ({ ...h._source, _tribunal: nome })));
-          }
-        } catch(e) { /* silencioso por tribunal */ }
+        } catch(e) {}
       }
+
+    } else if (buscaTipoAtivo === 'cpf') {
+      const cpfNum = input.replace(/\D/g, '');
+      for (const trib of tribunaisParaBuscar) {
+        const { endpoint, nome } = TRIBUNAIS[trib];
+        try {
+          const data = await buscarDatajud(endpoint, {
+            query: { match: { 'partes.documento': cpfNum } },
+            size: 20, _source: true
+          });
+          if (data.hits?.hits?.length)
+            resultados = resultados.concat(data.hits.hits.map(h => ({ ...h._source, _tribunal: nome })));
+        } catch(e) {}
+      }
+
     } else {
       // Busca por número de processo
       const trib = detectarTribunal(input);
       const { endpoint, nome } = typeof trib === 'string' ? TRIBUNAIS[trib] : trib;
       const numLimpo = input.replace(/\D/g, '');
       const data = await buscarDatajud(endpoint, {
-        query: {
-          bool: {
-            must: [{ match: { numeroProcesso: numLimpo } }]
-          }
-        },
-        size: 5,
-        _source: true
+        query: { bool: { must: [{ match: { numeroProcesso: numLimpo } }] } },
+        size: 5, _source: true
       });
-      if (data.hits?.hits?.length) {
+      if (data.hits?.hits?.length)
         resultados = data.hits.hits.map(h => ({ ...h._source, _tribunal: nome }));
-      }
     }
 
     if (resultados.length === 0) {
@@ -1374,8 +1537,100 @@ function selecionarParte(numProcesso, nomeCliente, cardIdx) {
   }, 100);
 }
 
+// === ATUALIZAÇÃO AUTOMÁTICA ===
+function fmtDateHora(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+async function atualizarProcesso(p) {
+  try {
+    const trib = detectarTribunal(p.processo);
+    if (!trib) return p;
+    const { endpoint, nome } = typeof trib === 'string' ? TRIBUNAIS[trib] : trib;
+    const numLimpo = p.processo.replace(/\D/g, '');
+    const data = await buscarDatajud(endpoint, {
+      query: { bool: { must: [{ match: { numeroProcesso: numLimpo } }] } },
+      size: 1, _source: true
+    });
+    if (data.hits?.hits?.length) {
+      const novo = data.hits.hits[0]._source;
+      return {
+        ...p,
+        tribunal: novo.tribunal || p.tribunal,
+        orgaoJulgador: novo.orgaoJulgador?.nome || p.orgaoJulgador,
+        classe: novo.classe?.nome || p.classe,
+        partes: novo.partes?.length ? novo.partes : p.partes,
+        ultimaVerificacao: new Date().toISOString(),
+      };
+    }
+  } catch(e) {}
+  return { ...p, ultimaVerificacao: new Date().toISOString() };
+}
+
+async function atualizarTodos(silencioso = false) {
+  if (processos.length === 0) return;
+
+  const bar = document.getElementById('updateBar');
+  const msg = document.getElementById('updateBarMsg');
+  const prog = document.getElementById('updateProgressBar');
+  const btn = document.getElementById('btnAtualizar');
+
+  bar.style.display = 'flex';
+  btn.disabled = true;
+  btn.textContent = '↻ Atualizando...';
+
+  const total = processos.length;
+  const atualizados = [];
+
+  for (let i = 0; i < total; i++) {
+    msg.textContent = `Verificando ${i + 1} de ${total}: ${processos[i].processo || 'processo'}...`;
+    prog.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
+    const atualizado = await atualizarProcesso(processos[i]);
+    atualizados.push(atualizado);
+    // pequena pausa para não sobrecarregar a API
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  processos = atualizados;
+  salvar();
+  render();
+
+  msg.textContent = `✓ ${total} processo(s) verificado(s) em ${fmtDateHora(new Date().toISOString())}`;
+  prog.style.width = '100%';
+  btn.disabled = false;
+  btn.textContent = '↻ Atualizar';
+
+  setTimeout(() => { bar.style.display = 'none'; }, 4000);
+}
+
 // === INIT ===
-render();
+// Carregar do Sheets ao abrir
+(async () => {
+  // Mostrar cache local enquanto carrega
+  processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
+  render();
+
+  // Carregar do Sheets
+  const bar = document.getElementById('updateBar');
+  const msg = document.getElementById('updateBarMsg');
+  bar.style.display = 'flex';
+  msg.textContent = 'Carregando processos do banco de dados...';
+  document.getElementById('updateProgressBar').style.width = '30%';
+
+  await carregarDoSheets();
+  render();
+
+  document.getElementById('updateProgressBar').style.width = '100%';
+  msg.textContent = `✓ ${processos.length} processo(s) carregado(s)`;
+  setTimeout(() => { bar.style.display = 'none'; }, 2000);
+
+  // Atualizar dados do DataJud em background
+  if (processos.length > 0) {
+    setTimeout(() => atualizarTodos(true), 2500);
+  }
+})();
 </script>
 </body>
 </html>
