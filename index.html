@@ -154,6 +154,7 @@
 <header>
   <div class="logo">Prazos <span>ESCRITÓRIO</span></div>
   <div class="header-actions">
+    <button class="btn btn-ghost" onclick="abrirSNAP()" id="btnSNAP">📰 Publicações</button>
     <button class="btn btn-ghost" onclick="atualizarTodos()" id="btnAtualizar">↻ Atualizar</button>
     <button class="btn btn-ghost" onclick="exportCSV()">↓ Exportar</button>
     <button class="btn btn-primary" onclick="openModal()">+ Novo prazo</button>
@@ -319,8 +320,8 @@ function calcDatas(pub,dias) {
   const segura=subDiasUteis(legal,2);
   return {segura,legal,alerta:segura};
 }
-function fmtDate(s) {
-  if(!s)return'—';const[y,m,d]=s.split('-');return`${d}/${m}/${y}`;
+function normDate(s){if(!s)return'';const str=String(s).slice(0,10);return str.replace(/[^0-9-]/g,'').substring(0,10);}function fmtDate(s) {
+  if(!s)return'—';const n=normDate(s);if(!n)return'—';const[y,m,d]=n.split('-');if(!y||!m||!d)return'—';return`${d}/${m}/${y}`;
 }
 function fmtDateHora(iso) {
   if(!iso)return'—';const d=new Date(iso);
@@ -328,7 +329,7 @@ function fmtDateHora(iso) {
 }
 function diasRestantes(s) {
   const h=new Date();h.setHours(0,0,0,0);
-  return Math.ceil((new Date(s+'T00:00:00')-h)/86400000);
+  const ns=normDate(s);if(!ns)return 0;return Math.ceil((new Date(ns+'T00:00:00')-h)/86400000);
 }
 
 // === SHEETS via Worker (CORS corrigido) ===
@@ -707,5 +708,18 @@ async function atualizarTodos(silencioso=false) {
   if(processos.length>0)setTimeout(()=>atualizarTodos(true),2500);
 })();
 </script>
+
+<!-- MODAL SNAP -->
+<div class="modal-overlay" id="snapOverlay" onclick="if(event.target===this)fecharSNAP()" style="z-index:300">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <span class="modal-title">📰 Publicações do Recorte Eletrônico</span>
+      <button class="btn-icon" onclick="fecharSNAP()">✕</button>
+    </div>
+    <div class="modal-body" id="snapBody">
+      <div style="text-align:center;padding:2rem;color:var(--text3)">Carregando publicações...</div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
