@@ -22,7 +22,7 @@
   header { background: var(--accent); color: white; padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
   .logo { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
   .logo span { opacity: 0.5; font-weight: 400; margin-left: 8px; font-size: 12px; letter-spacing: 0.1em; }
-  .header-actions { display: flex; gap: 10px; }
+  .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
   .btn { font-family: var(--sans); font-size: 13px; font-weight: 500; padding: 7px 16px; border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
   .btn-primary { background: white; color: var(--accent); }
   .btn-primary:hover { background: #e8f0eb; }
@@ -38,7 +38,7 @@
   .stat-card.danger .stat-value { color: var(--accent2); }
   .stat-card.warn .stat-value { color: var(--warn); }
   .stat-card.ok .stat-value { color: var(--ok); }
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
   .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); }
   .filter-bar { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
   .filter-btn { font-family: var(--sans); font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.15s; }
@@ -80,7 +80,10 @@
   .form-row { margin-bottom: 1.25rem; }
   .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
   label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
-  input[type="text"], input[type="date"], input[type="number"], input[type="email"], select, textarea { width: 100%; font-family: var(--sans); font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; -webkit-appearance: none; }
+  input[type="text"], input[type="date"], input[type="number"], input[type="email"], select, textarea {
+    width: 100%; font-family: var(--sans); font-size: 14px; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; -webkit-appearance: none;
+  }
   input:focus, select:focus, textarea:focus { border-color: var(--accent); background: white; }
   .form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
   .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); }
@@ -93,10 +96,10 @@
   .toggle input:checked + .toggle-slider { background: var(--accent); }
   .toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
   .preview-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; margin-top: 1rem; }
-  .preview-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; }
+  .preview-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; gap: 1rem; }
   .preview-row:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 3px; }
   .preview-row-label { color: var(--text2); }
-  .preview-row-val { font-family: var(--mono); font-weight: 500; }
+  .preview-row-val { font-family: var(--mono); font-weight: 500; text-align: right; }
   .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,8,0.4); z-index: 200; }
   .detail-overlay.open { display: block; }
   .detail-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; z-index: 201; transform: translateX(100%); transition: transform 0.25s ease; }
@@ -107,7 +110,7 @@
   .detail-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
   .detail-field { margin-bottom: 10px; }
   .detail-field-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
-  .detail-field-val { font-size: 14px; font-weight: 500; }
+  .detail-field-val { font-size: 14px; font-weight: 500; word-break: break-word; }
   .prazo-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 10px; }
   .prazo-card-title { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
   .prazo-card-date { font-size: 18px; font-weight: 700; font-family: var(--mono); }
@@ -134,7 +137,7 @@
   .busca-classe { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
   .busca-meta { font-size: 12px; color: var(--text3); }
   .busca-partes { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
-  .busca-parte { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; }
+  .busca-parte { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; align-items: center; }
   .busca-parte-tipo { color: var(--text3); min-width: 80px; }
   .busca-parte-nome { font-weight: 500; flex: 1; }
   .busca-parte-sel { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--accent); color: var(--accent); cursor: pointer; margin-left: 4px; background: transparent; font-family: var(--sans); transition: all 0.15s; }
@@ -142,10 +145,15 @@
   .busca-loading { text-align: center; padding: 1.5rem; color: var(--text3); font-size: 13px; }
   .busca-erro { padding: 1rem; background: var(--accent2-light); border-radius: var(--radius-sm); font-size: 13px; color: var(--accent2); }
   .busca-tribunal { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: var(--surface2); color: var(--text2); margin-right: 6px; }
+  .snap-content-preview { font-size: 12px; color: var(--text2); line-height: 1.45; white-space: pre-wrap; }
+  .snap-partes { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .snap-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .snap-full-text { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
   @media (max-width: 768px) {
     .stats { grid-template-columns: repeat(2, 1fr); }
     .detail-panel { width: 100%; }
     .form-row-2 { grid-template-columns: 1fr; }
+    header { height: auto; padding: 1rem; }
   }
 </style>
 </head>
@@ -161,7 +169,7 @@
   </div>
 </header>
 
-<div id="updateBar" style="display:none;background:var(--accent);color:white;padding:8px 2rem;font-size:12px;font-weight:500;display:flex;align-items:center;gap:10px">
+<div id="updateBar" style="display:none;background:var(--accent);color:white;padding:8px 2rem;font-size:12px;font-weight:500;align-items:center;gap:10px">
   <span id="updateBarMsg">Verificando atualizações...</span>
   <div style="flex:1;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden">
     <div id="updateProgressBar" style="height:100%;background:white;width:0%;transition:width 0.3s"></div>
@@ -196,7 +204,6 @@
   </div>
 </div>
 
-<!-- MODAL -->
 <div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
   <div class="modal">
     <div class="modal-header">
@@ -274,7 +281,6 @@
   </div>
 </div>
 
-<!-- DETAIL PANEL -->
 <div class="detail-overlay" id="detailOverlay" onclick="closeDetail()"></div>
 <div class="detail-panel" id="detailPanel">
   <div class="detail-header">
@@ -295,105 +301,161 @@ const feriados = new Set([
   '2026-02-16','2026-02-17','2026-06-04','2026-08-15','2026-12-08','2026-12-24','2026-12-31',
 ]);
 
+function escapeHtml(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function toSafeJSONString(obj) {
+  return encodeURIComponent(JSON.stringify(obj || {}));
+}
+
+function fromSafeJSONString(str) {
+  return JSON.parse(decodeURIComponent(str));
+}
+
 function isUtil(d) {
   const dia = d.getDay();
-  if (dia===0||dia===6) return false;
+  if (dia === 0 || dia === 6) return false;
   return !feriados.has(d.toISOString().slice(0,10));
 }
-function somarDiasUteis(s,n) {
-  let d=new Date(s+'T12:00:00'),c=isUtil(d)?1:0;
-  while(c<n){d.setDate(d.getDate()+1);if(isUtil(d))c++;}
+
+function somarDiasUteis(s, n) {
+  let d = new Date(s + 'T12:00:00');
+  let c = isUtil(d) ? 1 : 0;
+  while (c < n) {
+    d.setDate(d.getDate() + 1);
+    if (isUtil(d)) c++;
+  }
   return d.toISOString().slice(0,10);
-}
-function proxUtil(s) {
-  let d=new Date(s+'T12:00:00');
-  while(!isUtil(d))d.setDate(d.getDate()+1);
-  return d.toISOString().slice(0,10);
-}
-function subDiasUteis(s,n) {
-  let d=new Date(s+'T12:00:00'),c=0;
-  while(c<n){d.setDate(d.getDate()-1);if(isUtil(d))c++;}
-  return d.toISOString().slice(0,10);
-}
-function calcDatas(pub,dias) {
-  const legal=proxUtil(somarDiasUteis(pub,parseInt(dias)));
-  const segura=subDiasUteis(legal,2);
-  return {segura,legal,alerta:segura};
-}
-function normDate(s){if(!s)return'';const str=String(s).slice(0,10);return str.replace(/[^0-9-]/g,'').substring(0,10);}function fmtDate(s) {
-  if(!s)return'—';const n=normDate(s);if(!n)return'—';const[y,m,d]=n.split('-');if(!y||!m||!d)return'—';return`${d}/${m}/${y}`;
-}
-function fmtDateHora(iso) {
-  if(!iso)return'—';const d=new Date(iso);
-  return d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-function diasRestantes(s) {
-  const h=new Date();h.setHours(0,0,0,0);
-  const ns=normDate(s);if(!ns)return 0;return Math.ceil((new Date(ns+'T00:00:00')-h)/86400000);
 }
 
-// === SHEETS via Worker (CORS corrigido) ===
+function proxUtil(s) {
+  let d = new Date(s + 'T12:00:00');
+  while (!isUtil(d)) d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0,10);
+}
+
+function subDiasUteis(s, n) {
+  let d = new Date(s + 'T12:00:00'), c = 0;
+  while (c < n) {
+    d.setDate(d.getDate() - 1);
+    if (isUtil(d)) c++;
+  }
+  return d.toISOString().slice(0,10);
+}
+
+function calcDatas(pub, dias) {
+  const legal = proxUtil(somarDiasUteis(pub, parseInt(dias)));
+  const segura = subDiasUteis(legal, 2);
+  return { segura, legal, alerta: segura };
+}
+
+function normDate(s) {
+  if (!s) return '';
+  const str = String(s).slice(0,10);
+  return str.replace(/[^0-9-]/g,'').substring(0,10);
+}
+
+function fmtDate(s) {
+  if (!s) return '—';
+  const n = normDate(s);
+  if (!n) return '—';
+  const [y,m,d] = n.split('-');
+  if (!y || !m || !d) return '—';
+  return `${d}/${m}/${y}`;
+}
+
+function fmtDateHora(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function diasRestantes(s) {
+  const h = new Date();
+  h.setHours(0,0,0,0);
+  const ns = normDate(s);
+  if (!ns) return 0;
+  return Math.ceil((new Date(ns + 'T00:00:00') - h) / 86400000);
+}
+
+// === SHEETS ===
 const SHEETS_API = 'https://proxy-datajud.luiz-841.workers.dev/sheets';
 
-let processos=[], editId=null, filtroAtivo='todos';
+let processos = [], editId = null, filtroAtivo = 'todos';
 
 async function carregarDoSheets() {
   try {
-    const r=await fetch(SHEETS_API+'?action=listar');
-    const d=await r.json();
-    if(d.processos){
-      processos=d.processos;
-      localStorage.setItem('prazos_processos',JSON.stringify(processos));
+    const r = await fetch(SHEETS_API + '?action=listar');
+    const d = await r.json();
+    if (d.processos) {
+      processos = d.processos;
+      localStorage.setItem('prazos_processos', JSON.stringify(processos));
     }
-  } catch(e) {
-    console.warn('Sheets indisponível, usando cache local:',e);
-    processos=JSON.parse(localStorage.getItem('prazos_processos')||'[]');
+  } catch (e) {
+    console.warn('Sheets indisponível, usando cache local:', e);
+    processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
   }
 }
 
 function salvar() {
-  localStorage.setItem('prazos_processos',JSON.stringify(processos));
+  localStorage.setItem('prazos_processos', JSON.stringify(processos));
 }
 
 async function salvarNoSheets(processo) {
   try {
-    const r=await fetch(SHEETS_API,{
+    const r = await fetch(SHEETS_API,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'salvar',processo})
     });
-    const d=await r.json();
-    if(!d.ok)console.warn('Sheets salvar:',d);
-  } catch(e){console.warn('Erro salvar Sheets:',e);}
+    const d = await r.json();
+    if (!d.ok) console.warn('Sheets salvar:', d);
+  } catch(e) {
+    console.warn('Erro salvar Sheets:', e);
+  }
 }
 
 async function excluirDoSheets(id) {
   try {
-    const r=await fetch(SHEETS_API,{
+    const r = await fetch(SHEETS_API,{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({action:'excluir',id})
     });
-    const d=await r.json();
-    if(!d.ok)console.warn('Sheets excluir:',d);
-  } catch(e){console.warn('Erro excluir Sheets:',e);}
+    const d = await r.json();
+    if (!d.ok) console.warn('Sheets excluir:', d);
+  } catch(e) {
+    console.warn('Erro excluir Sheets:', e);
+  }
 }
 
 function statusCalc(p) {
-  const dr=diasRestantes(p.dataLegal);
-  if(dr<0)return'vencido';
-  if(dr<=2)return'urgente';
-  if(diasRestantes(p.dataSegura)<=3)return'vencendo';
-  return'ok';
+  const dr = diasRestantes(p.dataLegal);
+  if (dr < 0) return 'vencido';
+  if (dr <= 2) return 'urgente';
+  if (diasRestantes(p.dataSegura) <= 3) return 'vencendo';
+  return 'ok';
 }
 
-function render(){renderStats();renderTable();}
+function render() {
+  renderStats();
+  renderTable();
+}
 
 function renderStats() {
-  const t=processos.length,u=processos.filter(p=>statusCalc(p)==='urgente').length,
-    v=processos.filter(p=>statusCalc(p)==='vencendo').length,
-    o=processos.filter(p=>statusCalc(p)==='ok').length;
-  document.getElementById('statsBar').innerHTML=`
+  const t = processos.length;
+  const u = processos.filter(p => statusCalc(p) === 'urgente').length;
+  const v = processos.filter(p => statusCalc(p) === 'vencendo').length;
+  const o = processos.filter(p => statusCalc(p) === 'ok').length;
+
+  document.getElementById('statsBar').innerHTML = `
     <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${t}</div></div>
     <div class="stat-card danger"><div class="stat-label">Urgente</div><div class="stat-value">${u}</div></div>
     <div class="stat-card warn"><div class="stat-label">Vencendo</div><div class="stat-value">${v}</div></div>
@@ -401,143 +463,217 @@ function renderStats() {
 }
 
 function renderTable() {
-  let lista=[...processos];
-  if(filtroAtivo==='urgente')lista=lista.filter(p=>statusCalc(p)==='urgente');
-  else if(filtroAtivo==='vencendo')lista=lista.filter(p=>['urgente','vencendo'].includes(statusCalc(p)));
-  else if(filtroAtivo==='ok')lista=lista.filter(p=>statusCalc(p)==='ok');
-  lista.sort((a,b)=>new Date(a.dataLegal)-new Date(b.dataLegal));
-  const tbody=document.getElementById('tableBody'),empty=document.getElementById('emptyState');
-  if(lista.length===0){tbody.innerHTML='';empty.style.display='block';return;}
-  empty.style.display='none';
-  const bm={ok:'<span class="badge badge-ok">Em dia</span>',vencendo:'<span class="badge badge-warn">Vencendo</span>',urgente:'<span class="badge badge-danger">Urgente</span>',vencido:'<span class="badge badge-vencido">Vencido</span>'};
-  tbody.innerHTML=lista.map(p=>{
-    const st=statusCalc(p),dr=diasRestantes(p.dataLegal);
-    const drt=dr<0?`<span style="color:var(--accent2)">${dr}d</span>`:dr===0?`<span style="color:var(--accent2)">Hoje</span>`:`<span class="dias-restantes" style="color:${dr<=2?'var(--accent2)':dr<=5?'var(--warn)':'var(--ok)'}">${dr}d</span>`;
-    return`<tr onclick="openDetail('${p.id}')" style="cursor:pointer">
-      <td><div class="process-num">${p.processo||'—'}</div></td>
-      <td><div class="client-name">${p.cliente||'—'}</div><div class="client-sub">${p.advogado==='luiz'?'Luiz Beltrão':'Outro advogado'}</div></td>
+  let lista = [...processos];
+  if (filtroAtivo === 'urgente') lista = lista.filter(p => statusCalc(p) === 'urgente');
+  else if (filtroAtivo === 'vencendo') lista = lista.filter(p => ['urgente','vencendo'].includes(statusCalc(p)));
+  else if (filtroAtivo === 'ok') lista = lista.filter(p => statusCalc(p) === 'ok');
+
+  lista.sort((a,b) => new Date(a.dataLegal) - new Date(b.dataLegal));
+
+  const tbody = document.getElementById('tableBody');
+  const empty = document.getElementById('emptyState');
+
+  if (lista.length === 0) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+
+  empty.style.display = 'none';
+
+  const bm = {
+    ok:'<span class="badge badge-ok">Em dia</span>',
+    vencendo:'<span class="badge badge-warn">Vencendo</span>',
+    urgente:'<span class="badge badge-danger">Urgente</span>',
+    vencido:'<span class="badge badge-vencido">Vencido</span>'
+  };
+
+  tbody.innerHTML = lista.map(p => {
+    const st = statusCalc(p);
+    const dr = diasRestantes(p.dataLegal);
+    const drt = dr < 0
+      ? `<span style="color:var(--accent2)">${dr}d</span>`
+      : dr === 0
+        ? `<span style="color:var(--accent2)">Hoje</span>`
+        : `<span class="dias-restantes" style="color:${dr<=2?'var(--accent2)':dr<=5?'var(--warn)':'var(--ok)'}">${dr}d</span>`;
+
+    return `<tr onclick="openDetail('${escapeHtml(p.id)}')" style="cursor:pointer">
+      <td><div class="process-num">${escapeHtml(p.processo || '—')}</div></td>
+      <td><div class="client-name">${escapeHtml(p.cliente || '—')}</div><div class="client-sub">${p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro advogado'}</div></td>
       <td><span class="date-cell">${fmtDate(p.publicacao)}</span></td>
-      <td style="text-align:center;font-family:var(--mono)">${p.dias}</td>
+      <td style="text-align:center;font-family:var(--mono)">${escapeHtml(String(p.dias ?? ''))}</td>
       <td><span class="date-cell date-safe">${fmtDate(p.dataSegura)}</span></td>
       <td><span class="date-cell date-legal">${fmtDate(p.dataLegal)}</span></td>
-      <td>${bm[st]}</td><td>${drt}</td>
-      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${p.ultimaVerificacao?fmtDateHora(p.ultimaVerificacao):'—'}</td>
+      <td>${bm[st]}</td>
+      <td>${drt}</td>
+      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${p.ultimaVerificacao ? fmtDateHora(p.ultimaVerificacao) : '—'}</td>
       <td onclick="event.stopPropagation()"><div class="action-btns">
-        <button class="btn-icon" onclick="editarProcesso('${p.id}')">✎</button>
-        <button class="btn-icon" onclick="excluirProcesso('${p.id}')">✕</button>
-      </div></td></tr>`;
+        <button class="btn-icon" onclick="editarProcesso('${escapeHtml(p.id)}')">✎</button>
+        <button class="btn-icon" onclick="excluirProcesso('${escapeHtml(p.id)}')">✕</button>
+      </div></td>
+    </tr>`;
   }).join('');
 }
 
-function setFilter(f,el){filtroAtivo=f;document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));el.classList.add('active');renderTable();}
+function setFilter(f, el) {
+  filtroAtivo = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  renderTable();
+}
 
 function openModal(id) {
-  editId=id||null;
-  document.getElementById('modalTitle').textContent=id?'Editar prazo':'Novo prazo';
-  if(id) {
-    const p=processos.find(x=>x.id===id);
-    document.getElementById('f_processo').value=p.processo;
-    document.getElementById('f_cliente').value=p.cliente;
-    document.getElementById('f_advogado').value=p.advogado;
-    document.getElementById('f_publicacao').value=p.publicacao;
-    document.getElementById('f_dias').value=p.dias;
-    document.getElementById('f_descricao').value=p.descricao||'';
-    document.getElementById('f_email').checked=p.alertaEmail;
-    document.getElementById('f_whatsapp').checked=p.alertaWhatsapp;
-    document.getElementById('f_agenda').checked=p.alertaAgenda;
-    document.getElementById('f_notif_cliente').checked=p.notifCliente;
-    document.getElementById('f_cliente_email').value=p.clienteEmail||'';
-    if(p.notifCliente)document.getElementById('clienteEmailRow').style.display='block';
+  editId = id || null;
+  document.getElementById('modalTitle').textContent = id ? 'Editar prazo' : 'Novo prazo';
+
+  if (id) {
+    const p = processos.find(x => x.id === id);
+    if (!p) return;
+
+    document.getElementById('f_processo').value = p.processo || '';
+    document.getElementById('f_cliente').value = p.cliente || '';
+    document.getElementById('f_advogado').value = p.advogado || 'luiz';
+    document.getElementById('f_publicacao').value = p.publicacao || '';
+    document.getElementById('f_dias').value = p.dias || '';
+    document.getElementById('f_descricao').value = p.descricao || '';
+    document.getElementById('f_email').checked = !!p.alertaEmail;
+    document.getElementById('f_whatsapp').checked = !!p.alertaWhatsapp;
+    document.getElementById('f_agenda').checked = !!p.alertaAgenda;
+    document.getElementById('f_notif_cliente').checked = !!p.notifCliente;
+    document.getElementById('f_cliente_email').value = p.clienteEmail || '';
+    document.getElementById('clienteEmailRow').style.display = p.notifCliente ? 'block' : 'none';
     calcPrazo();
   } else {
-    ['f_processo','f_cliente','f_publicacao','f_dias','f_descricao','f_cliente_email'].forEach(id=>document.getElementById(id).value='');
-    document.getElementById('f_advogado').value='luiz';
-    document.getElementById('f_email').checked=true;
-    document.getElementById('f_whatsapp').checked=false;
-    document.getElementById('f_agenda').checked=true;
-    document.getElementById('f_notif_cliente').checked=false;
-    document.getElementById('clienteEmailRow').style.display='none';
-    document.getElementById('previewBox').style.display='none';
+    ['f_processo','f_cliente','f_publicacao','f_dias','f_descricao','f_cliente_email','f_busca'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    document.getElementById('f_advogado').value = 'luiz';
+    document.getElementById('f_email').checked = true;
+    document.getElementById('f_whatsapp').checked = false;
+    document.getElementById('f_agenda').checked = true;
+    document.getElementById('f_notif_cliente').checked = false;
+    document.getElementById('clienteEmailRow').style.display = 'none';
+    document.getElementById('previewBox').style.display = 'none';
+    document.getElementById('buscaResultado').style.display = 'none';
+    document.getElementById('buscaResultado').innerHTML = '';
   }
+
   document.getElementById('modalOverlay').classList.add('open');
 }
 
-function closeModal(){document.getElementById('modalOverlay').classList.remove('open');}
-function handleOverlayClick(e){if(e.target===document.getElementById('modalOverlay'))closeModal();}
-function toggleClienteEmail(){document.getElementById('clienteEmailRow').style.display=document.getElementById('f_notif_cliente').checked?'block':'none';}
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+function handleOverlayClick(e){ if (e.target === document.getElementById('modalOverlay')) closeModal(); }
+function toggleClienteEmail(){ document.getElementById('clienteEmailRow').style.display = document.getElementById('f_notif_cliente').checked ? 'block' : 'none'; }
 
 function calcPrazo() {
-  const pub=document.getElementById('f_publicacao').value,dias=document.getElementById('f_dias').value;
-  if(!pub||!dias){document.getElementById('previewBox').style.display='none';return;}
-  const{segura,legal,alerta}=calcDatas(pub,dias);
-  document.getElementById('prev_inicio').textContent=fmtDate(pub)+' (dia 1)';
-  document.getElementById('prev_segura').textContent=fmtDate(segura);
-  document.getElementById('prev_legal').textContent=fmtDate(legal);
-  document.getElementById('prev_alerta').textContent=fmtDate(alerta);
-  document.getElementById('previewBox').style.display='block';
+  const pub = document.getElementById('f_publicacao').value;
+  const dias = document.getElementById('f_dias').value;
+  if (!pub || !dias) {
+    document.getElementById('previewBox').style.display = 'none';
+    return;
+  }
+  const { segura, legal, alerta } = calcDatas(pub, dias);
+  document.getElementById('prev_inicio').textContent = fmtDate(pub) + ' (dia 1 - modo conservador)';
+  document.getElementById('prev_segura').textContent = fmtDate(segura);
+  document.getElementById('prev_legal').textContent = fmtDate(legal);
+  document.getElementById('prev_alerta').textContent = fmtDate(alerta);
+  document.getElementById('previewBox').style.display = 'block';
 }
 
 function salvarProcesso() {
-  const pub=document.getElementById('f_publicacao').value,dias=document.getElementById('f_dias').value;
-  if(!pub||!dias){alert('Preencha a data de publicação e o número de dias úteis.');return;}
-  const{segura,legal,alerta}=calcDatas(pub,parseInt(dias));
-  const obj={
-    id:editId||Date.now().toString(),
-    processo:document.getElementById('f_processo').value,
-    cliente:document.getElementById('f_cliente').value,
-    advogado:document.getElementById('f_advogado').value,
-    publicacao:pub,dias:parseInt(dias),
-    descricao:document.getElementById('f_descricao').value,
-    dataSegura:segura,dataLegal:legal,dataAlerta:alerta,
-    alertaEmail:document.getElementById('f_email').checked,
-    alertaWhatsapp:document.getElementById('f_whatsapp').checked,
-    alertaAgenda:document.getElementById('f_agenda').checked,
-    notifCliente:document.getElementById('f_notif_cliente').checked,
-    clienteEmail:document.getElementById('f_cliente_email').value,
-    criadoEm:editId?(processos.find(x=>x.id===editId)?.criadoEm||new Date().toISOString()):new Date().toISOString(),
+  const pub = document.getElementById('f_publicacao').value;
+  const dias = document.getElementById('f_dias').value;
+  if (!pub || !dias) {
+    alert('Preencha a data de publicação e o número de dias úteis.');
+    return;
+  }
+
+  const { segura, legal, alerta } = calcDatas(pub, parseInt(dias));
+  const anterior = editId ? processos.find(x => x.id === editId) : null;
+
+  const obj = {
+    id: editId || Date.now().toString(),
+    processo: document.getElementById('f_processo').value.trim(),
+    cliente: document.getElementById('f_cliente').value.trim(),
+    advogado: document.getElementById('f_advogado').value,
+    publicacao: pub,
+    dias: parseInt(dias),
+    descricao: document.getElementById('f_descricao').value.trim(),
+    dataSegura: segura,
+    dataLegal: legal,
+    dataAlerta: alerta,
+    alertaEmail: document.getElementById('f_email').checked,
+    alertaWhatsapp: document.getElementById('f_whatsapp').checked,
+    alertaAgenda: document.getElementById('f_agenda').checked,
+    notifCliente: document.getElementById('f_notif_cliente').checked,
+    clienteEmail: document.getElementById('f_cliente_email').value.trim(),
+    criadoEm: anterior?.criadoEm || new Date().toISOString(),
+    atualizadoEm: new Date().toISOString(),
   };
-  if(editId)processos=processos.map(p=>p.id===editId?obj:p);
+
+  if (editId) processos = processos.map(p => p.id === editId ? obj : p);
   else processos.push(obj);
-  salvar();closeModal();render();salvarNoSheets(obj);
+
+  salvar();
+  closeModal();
+  render();
+  salvarNoSheets(obj);
 }
 
-function editarProcesso(id){openModal(id);}
-function excluirProcesso(id){
-  if(!confirm('Excluir este processo?'))return;
-  processos=processos.filter(p=>p.id!==id);
-  salvar();render();excluirDoSheets(id);
+function editarProcesso(id){ openModal(id); }
+
+function excluirProcesso(id) {
+  if (!confirm('Excluir este processo?')) return;
+  processos = processos.filter(p => p.id !== id);
+  salvar();
+  render();
+  excluirDoSheets(id);
 }
 
 function openDetail(id) {
-  const p=processos.find(x=>x.id===id);if(!p)return;
-  document.getElementById('detailTitle').textContent=p.processo||'Processo';
-  document.getElementById('detailEditBtn').dataset.id=id;
-  const st=statusCalc(p);
-  const bm={ok:'<span class="badge badge-ok">Em dia</span>',vencendo:'<span class="badge badge-warn">Vencendo</span>',urgente:'<span class="badge badge-danger">Urgente</span>',vencido:'<span class="badge badge-vencido">Vencido</span>'};
-  const canais=[];
-  if(p.alertaEmail)canais.push({cor:'#1A3A2A',label:'E-mail (Gmail)'});
-  if(p.alertaWhatsapp)canais.push({cor:'#1A6B3A',label:'WhatsApp'});
-  if(p.alertaAgenda)canais.push({cor:'#185FA5',label:'Google Agenda (3 eventos)'});
-  if(p.notifCliente)canais.push({cor:'#B87010',label:`Cliente: ${p.clienteEmail||'não informado'}`});
-  document.getElementById('detailBody').innerHTML=`
+  const p = processos.find(x => x.id === id);
+  if (!p) return;
+
+  document.getElementById('detailTitle').textContent = p.processo || 'Processo';
+  document.getElementById('detailEditBtn').dataset.id = id;
+
+  const st = statusCalc(p);
+  const bm = {
+    ok:'<span class="badge badge-ok">Em dia</span>',
+    vencendo:'<span class="badge badge-warn">Vencendo</span>',
+    urgente:'<span class="badge badge-danger">Urgente</span>',
+    vencido:'<span class="badge badge-vencido">Vencido</span>'
+  };
+
+  const canais = [];
+  if (p.alertaEmail) canais.push({cor:'#1A3A2A',label:'E-mail (Gmail)'});
+  if (p.alertaWhatsapp) canais.push({cor:'#1A6B3A',label:'WhatsApp'});
+  if (p.alertaAgenda) canais.push({cor:'#185FA5',label:'Google Agenda (3 eventos)'});
+  if (p.notifCliente) canais.push({cor:'#B87010',label:`Cliente: ${escapeHtml(p.clienteEmail || 'não informado')}`});
+
+  document.getElementById('detailBody').innerHTML = `
     <div class="detail-section">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem">
-        ${bm[st]}<span style="font-family:var(--mono);font-size:13px;color:var(--text3)">${diasRestantes(p.dataLegal)>=0?diasRestantes(p.dataLegal)+' dias restantes':'Vencido há '+Math.abs(diasRestantes(p.dataLegal))+' dias'}</span>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
+        ${bm[st]}
+        <span style="font-family:var(--mono);font-size:13px;color:var(--text3)">
+          ${diasRestantes(p.dataLegal) >= 0 ? diasRestantes(p.dataLegal)+' dias restantes' : 'Vencido há '+Math.abs(diasRestantes(p.dataLegal))+' dias'}
+        </span>
       </div>
-      <div class="detail-field"><div class="detail-field-label">Número do processo</div><div class="detail-field-val" style="font-family:var(--mono)">${p.processo||'—'}</div></div>
-      <div class="detail-field"><div class="detail-field-label">Cliente</div><div class="detail-field-val">${p.cliente||'—'}</div></div>
-      <div class="detail-field"><div class="detail-field-label">Advogado responsável</div><div class="detail-field-val">${p.advogado==='luiz'?'Luiz Beltrão':'Outro advogado'}</div></div>
-      ${p.descricao?`<div class="detail-field"><div class="detail-field-label">Descrição</div><div class="detail-field-val">${p.descricao}</div></div>`:''}
+      <div class="detail-field"><div class="detail-field-label">Número do processo</div><div class="detail-field-val" style="font-family:var(--mono)">${escapeHtml(p.processo || '—')}</div></div>
+      <div class="detail-field"><div class="detail-field-label">Cliente</div><div class="detail-field-val">${escapeHtml(p.cliente || '—')}</div></div>
+      <div class="detail-field"><div class="detail-field-label">Advogado responsável</div><div class="detail-field-val">${p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro advogado'}</div></div>
+      ${p.descricao ? `<div class="detail-field"><div class="detail-field-label">Descrição</div><div class="detail-field-val">${escapeHtml(p.descricao)}</div></div>` : ''}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Datas</div>
       <div class="prazo-card safe"><div class="prazo-card-title">Data segura</div><div class="prazo-card-date">${fmtDate(p.dataSegura)}</div><div class="prazo-card-sub">Sem prorrogação — mais conservadora</div></div>
       <div class="prazo-card legal"><div class="prazo-card-title">Prazo fatal (legal)</div><div class="prazo-card-date">${fmtDate(p.dataLegal)}</div><div class="prazo-card-sub">Com prorrogação se cair em feriado/fim de semana</div></div>
-      <div style="font-size:12px;color:var(--text3);margin-top:6px">Publicação: ${fmtDate(p.publicacao)} · ${p.dias} dias úteis · Alerta D-2: ${fmtDate(p.dataAlerta)}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">Publicação: ${fmtDate(p.publicacao)} · ${escapeHtml(String(p.dias))} dias úteis · Alerta D-2: ${fmtDate(p.dataAlerta)}</div>
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Canais de alerta</div>
-      ${canais.length===0?'<div style="font-size:13px;color:var(--text3)">Nenhum canal configurado</div>':canais.map(c=>`<div class="alert-channel"><div class="channel-dot" style="background:${c.cor}"></div>${c.label}</div>`).join('')}
+      ${canais.length === 0 ? '<div style="font-size:13px;color:var(--text3)">Nenhum canal configurado</div>' : canais.map(c => `<div class="alert-channel"><div class="channel-dot" style="background:${c.cor}"></div>${c.label}</div>`).join('')}
     </div>
     <div class="detail-section">
       <div class="detail-section-title">Linha do tempo</div>
@@ -548,27 +684,48 @@ function openDetail(id) {
         <div class="timeline-item"><div class="timeline-dot" style="background:var(--accent2)"></div><div class="timeline-date">${fmtDate(p.dataLegal)}</div><div class="timeline-text">Prazo fatal</div></div>
       </div>
     </div>`;
+
   document.getElementById('detailOverlay').classList.add('open');
   document.getElementById('detailPanel').classList.add('open');
 }
 
-function closeDetail(){document.getElementById('detailOverlay').classList.remove('open');document.getElementById('detailPanel').classList.remove('open');}
-function editarDoDetalhe(){const id=document.getElementById('detailEditBtn').dataset.id;closeDetail();editarProcesso(id);}
+function closeDetail() {
+  document.getElementById('detailOverlay').classList.remove('open');
+  document.getElementById('detailPanel').classList.remove('open');
+}
+function editarDoDetalhe() {
+  const id = document.getElementById('detailEditBtn').dataset.id;
+  closeDetail();
+  editarProcesso(id);
+}
 
 function exportCSV() {
-  if(processos.length===0){alert('Nenhum processo para exportar.');return;}
-  const cols=['Processo','Cliente','Advogado','Publicação','Dias úteis','Data segura','Prazo fatal','Alerta D-2','Status'];
-  const rows=processos.map(p=>[p.processo,p.cliente,p.advogado==='luiz'?'Luiz Beltrão':'Outro',fmtDate(p.publicacao),p.dias,fmtDate(p.dataSegura),fmtDate(p.dataLegal),fmtDate(p.dataAlerta),statusCalc(p)]);
-  const csv=[cols,...rows].map(r=>r.map(v=>`"${v}"`).join(',')).join('\n');
-  const a=document.createElement('a');
-  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent('\uFEFF'+csv);
-  a.download='prazos-'+new Date().toISOString().slice(0,10)+'.csv';
+  if (processos.length === 0) {
+    alert('Nenhum processo para exportar.');
+    return;
+  }
+  const cols = ['Processo','Cliente','Advogado','Publicação','Dias úteis','Data segura','Prazo fatal','Alerta D-2','Status'];
+  const rows = processos.map(p => [
+    p.processo || '',
+    p.cliente || '',
+    p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro',
+    fmtDate(p.publicacao),
+    p.dias,
+    fmtDate(p.dataSegura),
+    fmtDate(p.dataLegal),
+    fmtDate(p.dataAlerta),
+    statusCalc(p)
+  ]);
+  const csv = [cols, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+  a.download = 'prazos-' + new Date().toISOString().slice(0,10) + '.csv';
   a.click();
 }
 
 // === DATAJUD ===
-const PROXY_URL='https://proxy-datajud.luiz-841.workers.dev/';
-const TRIBUNAIS={
+const PROXY_URL = 'https://proxy-datajud.luiz-841.workers.dev/';
+const TRIBUNAIS = {
   tjmg:{endpoint:'api_publica_tjmg',nome:'TJMG'},
   trt3:{endpoint:'api_publica_trt3',nome:'TRT-MG (3ª Região)'},
   jfmg:{endpoint:'api_publica_jfmg',nome:'JFMG'},
@@ -581,195 +738,270 @@ const TRIBUNAIS={
 };
 
 function detectarTribunal(num) {
-  const c=num.replace(/\D/g,'');if(c.length<15)return null;
-  const j=c.charAt(13),tt=c.substring(14,16);
-  if(j==='8'&&tt==='13')return'tjmg';
-  if(j==='5'&&tt==='03')return'trt3';
-  if(j==='4'&&tt==='01')return{endpoint:'api_publica_jf-mg',nome:'JFMG'};
-  return'tjmg';
+  const c = String(num || '').replace(/\D/g,'');
+  if (c.length < 15) return null;
+  const j = c.charAt(13), tt = c.substring(14,16);
+  if (j === '8' && tt === '13') return 'tjmg';
+  if (j === '5' && tt === '03') return 'trt3';
+  if (j === '4' && tt === '01') return 'jfmg';
+  return null;
 }
 
-async function buscarDatajud(endpoint,query) {
-  const r=await fetch(PROXY_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({endpoint,query})});
-  if(!r.ok)throw new Error(`Erro ${r.status}`);
+async function buscarDatajud(endpoint, query) {
+  const r = await fetch(PROXY_URL,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({endpoint,query})
+  });
+  if (!r.ok) throw new Error(`Erro ${r.status}`);
   return r.json();
 }
 
-let buscaTipoAtivo='processo';
-const buscaConfig={
+let buscaTipoAtivo = 'processo';
+const buscaConfig = {
   processo:{placeholder:'Ex: 0000000-00.0000.8.13.0024',hint:'Número do processo no formato CNJ'},
   oab:{placeholder:'Ex: 129524',hint:'Número da OAB (sem o estado)'},
   cnpj:{placeholder:'Ex: 00.000.000/0001-00',hint:'CNPJ da parte (com ou sem formatação)'},
   cpf:{placeholder:'Ex: 000.000.000-00',hint:'CPF da parte (com ou sem formatação)'}
 };
 
-function setBuscaTab(tipo,el) {
-  buscaTipoAtivo=tipo;
-  document.querySelectorAll('.busca-tab').forEach(b=>b.classList.remove('active'));el.classList.add('active');
-  const cfg=buscaConfig[tipo];
-  document.getElementById('f_busca').placeholder=cfg.placeholder;
-  document.getElementById('buscaHint').textContent=cfg.hint;
-  document.getElementById('f_busca').value='';
-  document.getElementById('buscaResultado').style.display='none';
-  document.getElementById('buscaResultado').innerHTML='';
-  document.getElementById('f_oab_uf').style.display=tipo==='oab'?'block':'none';
+function setBuscaTab(tipo, el) {
+  buscaTipoAtivo = tipo;
+  document.querySelectorAll('.busca-tab').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  const cfg = buscaConfig[tipo];
+  document.getElementById('f_busca').placeholder = cfg.placeholder;
+  document.getElementById('buscaHint').textContent = cfg.hint;
+  document.getElementById('f_busca').value = '';
+  document.getElementById('buscaResultado').style.display = 'none';
+  document.getElementById('buscaResultado').innerHTML = '';
+  document.getElementById('f_oab_uf').style.display = tipo === 'oab' ? 'block' : 'none';
 }
 
 async function buscarProcesso() {
-  const input=document.getElementById('f_busca').value.trim();if(!input)return;
-  const el=document.getElementById('buscaResultado'),btn=document.getElementById('btnBuscar');
-  el.style.display='block';el.innerHTML='<div class="busca-loading">Buscando no DataJud/CNJ...</div>';
-  btn.disabled=true;btn.textContent='...';
+  const input = document.getElementById('f_busca').value.trim();
+  if (!input) return;
+
+  const el = document.getElementById('buscaResultado');
+  const btn = document.getElementById('btnBuscar');
+  el.style.display = 'block';
+  el.innerHTML = '<div class="busca-loading">Buscando no DataJud/CNJ...</div>';
+  btn.disabled = true;
+  btn.textContent = '...';
+
   try {
-    let resultados=[];
-    const tp=['tjmg','trt3'],ta=['tjmg','trt3','jfmg','trf1','tjsp','tjrj','tjpr','trt2','trt4'];
-    if(buscaTipoAtivo==='oab') {
-      const n=input.replace(/\D/g,''),uf=document.getElementById('f_oab_uf').value;
-      for(const t of ta){const{endpoint,nome}=TRIBUNAIS[t];try{const q=uf?{bool:{must:[{match:{'partes.advogados.OabNumero':n}},{match:{'partes.advogados.OabEstado':uf}}]}}:{match:{'partes.advogados.OabNumero':n}};const d=await buscarDatajud(endpoint,{query:q,size:10,_source:true});if(d.hits?.hits?.length)resultados=resultados.concat(d.hits.hits.map(h=>({...h._source,_tribunal:nome})));}catch(e){}}
-    } else if(buscaTipoAtivo==='cnpj'||buscaTipoAtivo==='cpf') {
-      const n=input.replace(/\D/g,'');
-      for(const t of tp){const{endpoint,nome}=TRIBUNAIS[t];try{const d=await buscarDatajud(endpoint,{query:{match:{'partes.documento':n}},size:20,_source:true});if(d.hits?.hits?.length)resultados=resultados.concat(d.hits.hits.map(h=>({...h._source,_tribunal:nome})));}catch(e){}}
+    let resultados = [];
+    const tp = ['tjmg','trt3'];
+    const ta = ['tjmg','trt3','jfmg','trf1','tjsp','tjrj','tjpr','trt2','trt4'];
+
+    if (buscaTipoAtivo === 'oab') {
+      const n = input.replace(/\D/g,'');
+      const uf = document.getElementById('f_oab_uf').value;
+      for (const t of ta) {
+        const {endpoint,nome} = TRIBUNAIS[t];
+        try {
+          const q = uf
+            ? { bool:{ must:[ {match:{'partes.advogados.OabNumero':n}}, {match:{'partes.advogados.OabEstado':uf}} ] } }
+            : { match:{'partes.advogados.OabNumero':n} };
+          const d = await buscarDatajud(endpoint,{query:q,size:10,_source:true});
+          if (d.hits?.hits?.length) resultados = resultados.concat(d.hits.hits.map(h => ({...h._source,_tribunal:nome})));
+        } catch(e) {}
+      }
+    } else if (buscaTipoAtivo === 'cnpj' || buscaTipoAtivo === 'cpf') {
+      const n = input.replace(/\D/g,'');
+      for (const t of tp) {
+        const {endpoint,nome} = TRIBUNAIS[t];
+        try {
+          const d = await buscarDatajud(endpoint,{query:{match:{'partes.documento':n}},size:20,_source:true});
+          if (d.hits?.hits?.length) resultados = resultados.concat(d.hits.hits.map(h => ({...h._source,_tribunal:nome})));
+        } catch(e) {}
+      }
     } else {
-      const trib=detectarTribunal(input);
-      const{endpoint,nome}=typeof trib==='string'?TRIBUNAIS[trib]:trib;
-      const d=await buscarDatajud(endpoint,{query:{bool:{must:[{match:{numeroProcesso:input.replace(/\D/g,'')}}]}},size:5,_source:true});
-      if(d.hits?.hits?.length)resultados=d.hits.hits.map(h=>({...h._source,_tribunal:nome}));
+      const trib = detectarTribunal(input);
+      if (!trib || !TRIBUNAIS[trib]) {
+        throw new Error('Número de processo inválido, incompleto ou tribunal não mapeado.');
+      }
+      const {endpoint,nome} = TRIBUNAIS[trib];
+      const d = await buscarDatajud(endpoint,{
+        query:{bool:{must:[{match:{numeroProcesso:input.replace(/\D/g,'')}}]}},
+        size:5,
+        _source:true
+      });
+      if (d.hits?.hits?.length) resultados = d.hits.hits.map(h => ({...h._source,_tribunal:nome}));
     }
-    if(resultados.length===0)el.innerHTML=`<div class="busca-erro">Nenhum processo encontrado.</div>`;
-    else renderResultadosBusca(resultados);
-  } catch(e){el.innerHTML=`<div class="busca-erro">Erro ao consultar DataJud: ${e.message}</div>`;}
-  btn.disabled=false;btn.textContent='Buscar';
+
+    if (resultados.length === 0) {
+      el.innerHTML = `<div class="busca-erro">Nenhum processo encontrado.</div>`;
+    } else {
+      renderResultadosBusca(resultados);
+    }
+  } catch(e) {
+    el.innerHTML = `<div class="busca-erro">Erro ao consultar DataJud: ${escapeHtml(e.message)}</div>`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Buscar';
+}
+
+function fmtNum(n) {
+  if (!n || n.length < 20) return n || '—';
+  const d = String(n).replace(/\D/g,'');
+  if (d.length !== 20) return n;
+  return `${d.slice(0,7)}-${d.slice(7,9)}.${d.slice(9,13)}.${d.slice(13,14)}.${d.slice(14,16)}.${d.slice(16)}`;
 }
 
 function renderResultadosBusca(lista) {
-  const el=document.getElementById('buscaResultado');
-  el.innerHTML=`<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${lista.length} processo(s) encontrado(s)</div>`+
-  lista.map((p,i)=>{
-    const partes=p.partes||[],tem=partes.length>0;
-    const ph=tem?partes.slice(0,6).map(pt=>{const tp=pt.tipoParte||'—',nm=pt.nome||'—';return`<div class="busca-parte"><span class="busca-parte-tipo">${tp}</span><span class="busca-parte-nome">${nm}</span><button class="busca-parte-sel" onclick="event.stopPropagation();selecionarParte('${escH(p.numeroProcesso)}','${escH(nm)}',${i})">Selecionar</button></div>`;}).join(''):'';
-    return`<div class="busca-card" id="busca-card-${i}" onclick="${!tem?`selecionarParte('${escH(p.numeroProcesso)}','',${i})`:''}">
-      <div class="busca-num">${fmtNum(p.numeroProcesso)}</div>
-      <div class="busca-classe">${p.classe?.nome||'—'}</div>
-      <div class="busca-meta"><span class="busca-tribunal">${p._tribunal}</span>${p.orgaoJulgador?.nome||''}</div>
-      ${tem?`<div class="busca-partes"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Partes — selecione seu cliente</div>${ph}</div>`:`<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Clique para usar — preencha o cliente manualmente</div>`}
-    </div>`;
-  }).join('');
+  const el = document.getElementById('buscaResultado');
+  el.innerHTML =
+    `<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${lista.length} processo(s) encontrado(s)</div>` +
+    lista.map((p,i) => {
+      const partes = Array.isArray(p.partes) ? p.partes : [];
+      const tem = partes.length > 0;
+      const procFmt = fmtNum(p.numeroProcesso || '');
+
+      const ph = tem ? partes.slice(0,6).map(pt => {
+        const tp = escapeHtml(pt.tipoParte || '—');
+        const nm = escapeHtml(pt.nome || '—');
+        return `<div class="busca-parte">
+          <span class="busca-parte-tipo">${tp}</span>
+          <span class="busca-parte-nome">${nm}</span>
+          <button class="busca-parte-sel" onclick="event.stopPropagation();selecionarParte(${i}, '${escapeHtml(pt.nome || '')}')">Selecionar</button>
+        </div>`;
+      }).join('') : '';
+
+      return `<div class="busca-card" id="busca-card-${i}" onclick="${!tem ? `selecionarResultadoSemParte(${i})` : ''}">
+        <div class="busca-num">${escapeHtml(procFmt)}</div>
+        <div class="busca-classe">${escapeHtml(p.classe?.nome || '—')}</div>
+        <div class="busca-meta"><span class="busca-tribunal">${escapeHtml(p._tribunal || '')}</span>${escapeHtml(p.orgaoJulgador?.nome || '')}</div>
+        ${tem
+          ? `<div class="busca-partes"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Partes — selecione seu cliente</div>${ph}</div>`
+          : `<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Clique para usar — preencha o cliente manualmente</div>`
+        }
+      </div>`;
+    }).join('');
+
+  window.__buscaResultados = lista;
 }
 
-function escH(s){return(s||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');}
-function fmtNum(n){if(!n||n.length<20)return n||'—';const d=n.replace(/\D/g,'');if(d.length!==20)return n;return`${d.slice(0,7)}-${d.slice(7,9)}.${d.slice(9,13)}.${d.slice(13,14)}.${d.slice(14,16)}.${d.slice(16)}`;}
-
-function selecionarParte(num,cli,idx) {
-  document.getElementById('f_processo').value=fmtNum(num);
-  document.getElementById('f_cliente').value=cli;
-  document.querySelectorAll('.busca-card').forEach(c=>c.classList.remove('selected'));
+function selecionarResultadoSemParte(idx) {
+  const p = window.__buscaResultados?.[idx];
+  if (!p) return;
+  document.getElementById('f_processo').value = fmtNum(p.numeroProcesso || '');
+  document.querySelectorAll('.busca-card').forEach(c => c.classList.remove('selected'));
   document.getElementById(`busca-card-${idx}`)?.classList.add('selected');
   document.getElementById('formProcesso').scrollIntoView({behavior:'smooth',block:'start'});
-  setTimeout(()=>{document.getElementById('buscaResultado').innerHTML+=`<div style="font-size:12px;color:var(--ok);font-weight:500;margin-top:6px">✓ Processo e cliente preenchidos — complete os demais campos abaixo.</div>`;},100);
+}
+
+function selecionarParte(idx, cliente) {
+  const p = window.__buscaResultados?.[idx];
+  if (!p) return;
+  document.getElementById('f_processo').value = fmtNum(p.numeroProcesso || '');
+  document.getElementById('f_cliente').value = cliente || '';
+  document.querySelectorAll('.busca-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById(`busca-card-${idx}`)?.classList.add('selected');
+  document.getElementById('formProcesso').scrollIntoView({behavior:'smooth',block:'start'});
 }
 
 async function atualizarProcesso(p) {
   try {
-    const trib=detectarTribunal(p.processo);if(!trib)return p;
-    const{endpoint}=typeof trib==='string'?TRIBUNAIS[trib]:trib;
-    const d=await buscarDatajud(endpoint,{query:{bool:{must:[{match:{numeroProcesso:p.processo.replace(/\D/g,'')}}]}},size:1,_source:true});
-    if(d.hits?.hits?.length){const n=d.hits.hits[0]._source;return{...p,tribunal:n.tribunal||p.tribunal,orgaoJulgador:n.orgaoJulgador?.nome||p.orgaoJulgador,classe:n.classe?.nome||p.classe,partes:n.partes?.length?n.partes:p.partes,ultimaVerificacao:new Date().toISOString()};}
-  }catch(e){}
-  return{...p,ultimaVerificacao:new Date().toISOString()};
+    const trib = detectarTribunal(p.processo);
+    if (!trib || !TRIBUNAIS[trib]) return {...p, ultimaVerificacao:new Date().toISOString()};
+    const {endpoint} = TRIBUNAIS[trib];
+    const d = await buscarDatajud(endpoint,{
+      query:{bool:{must:[{match:{numeroProcesso:String(p.processo || '').replace(/\D/g,'')}}]}},
+      size:1,
+      _source:true
+    });
+    if (d.hits?.hits?.length) {
+      const n = d.hits.hits[0]._source;
+      return {
+        ...p,
+        tribunal:n.tribunal || p.tribunal,
+        orgaoJulgador:n.orgaoJulgador?.nome || p.orgaoJulgador,
+        classe:n.classe?.nome || p.classe,
+        partes:n.partes?.length ? n.partes : p.partes,
+        ultimaVerificacao:new Date().toISOString()
+      };
+    }
+  } catch(e) {}
+  return {...p, ultimaVerificacao:new Date().toISOString()};
 }
 
-async function atualizarTodos(silencioso=false) {
-  if(processos.length===0)return;
-  const bar=document.getElementById('updateBar'),msg=document.getElementById('updateBarMsg'),
-    prog=document.getElementById('updateProgressBar'),btn=document.getElementById('btnAtualizar');
-  bar.style.display='flex';btn.disabled=true;btn.textContent='↻ Atualizando...';
-  const total=processos.length,ats=[];
-  for(let i=0;i<total;i++){
-    msg.textContent=`Verificando ${i+1} de ${total}: ${processos[i].processo||'processo'}...`;
-    prog.style.width=`${Math.round(((i+1)/total)*100)}%`;
+async function atualizarTodos() {
+  if (processos.length === 0) return;
+  const bar = document.getElementById('updateBar');
+  const msg = document.getElementById('updateBarMsg');
+  const prog = document.getElementById('updateProgressBar');
+  const btn = document.getElementById('btnAtualizar');
+
+  bar.style.display = 'flex';
+  btn.disabled = true;
+  btn.textContent = '↻ Atualizando...';
+
+  const total = processos.length;
+  const ats = [];
+
+  for (let i = 0; i < total; i++) {
+    msg.textContent = `Verificando ${i + 1} de ${total}: ${processos[i].processo || 'processo'}...`;
+    prog.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
     ats.push(await atualizarProcesso(processos[i]));
-    await new Promise(r=>setTimeout(r,300));
+    await new Promise(r => setTimeout(r, 250));
   }
-  processos=ats;salvar();render();
-  msg.textContent=`✓ ${total} processo(s) verificado(s) em ${fmtDateHora(new Date().toISOString())}`;
-  prog.style.width='100%';btn.disabled=false;btn.textContent='↻ Atualizar';
-  setTimeout(()=>{bar.style.display='none';},4000);
+
+  processos = ats;
+  salvar();
+  render();
+
+  msg.textContent = `✓ ${total} processo(s) verificado(s) em ${fmtDateHora(new Date().toISOString())}`;
+  prog.style.width = '100%';
+  btn.disabled = false;
+  btn.textContent = '↻ Atualizar';
+
+  setTimeout(() => { bar.style.display = 'none'; }, 4000);
 }
 
-(async()=>{
-  processos=JSON.parse(localStorage.getItem('prazos_processos')||'[]');render();
-  const bar=document.getElementById('updateBar'),msg=document.getElementById('updateBarMsg');
-  bar.style.display='flex';msg.textContent='Carregando processos do banco de dados...';
-  document.getElementById('updateProgressBar').style.width='30%';
-  await carregarDoSheets();render();
-  document.getElementById('updateProgressBar').style.width='100%';
-  msg.textContent=`✓ ${processos.length} processo(s) carregado(s)`;
-  setTimeout(()=>{bar.style.display='none';},2000);
-  if(processos.length>0)setTimeout(()=>atualizarTodos(true),2500);
+(async () => {
+  processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
+  render();
+
+  const bar = document.getElementById('updateBar');
+  const msg = document.getElementById('updateBarMsg');
+  bar.style.display = 'flex';
+  msg.textContent = 'Carregando processos do banco de dados...';
+  document.getElementById('updateProgressBar').style.width = '30%';
+
+  await carregarDoSheets();
+  render();
+
+  document.getElementById('updateProgressBar').style.width = '100%';
+  msg.textContent = `✓ ${processos.length} processo(s) carregado(s)`;
+  setTimeout(() => { bar.style.display = 'none'; }, 2000);
 })();
 
 // === SNAP ===
 const SNAP_WORKER = 'https://proxy-datajud.luiz-841.workers.dev/snap';
-const SNAP_CREDS = { usuario: 'beltraodemarchi@gmail.com', senha: '457710' };
-let snapToken = null;
-
-async function snapLogin() {
-  if(snapToken) return snapToken;
-  const r = await fetch(SNAP_WORKER, {
-    method: 'POST',
-    headers: {'Content-Type':'application/json'},
-    body: JSON.stringify({snapAction:'login', ...SNAP_CREDS})
-  });
-  const d = await r.json();
-  if(!d.accessToken) throw new Error(d.message || 'Erro no login SNAP');
-  snapToken = d.accessToken;
-  return snapToken;
-}
 
 async function abrirSNAP() {
+  const btn = document.getElementById('btnSNAP');
+  btn.disabled = true;
   document.getElementById('snapOverlay').classList.add('open');
-  document.getElementById('snapBody').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Conectando ao Recorte Eletrônico...</div>';
-  try {
-    const token = await snapLogin();
+  document.getElementById('snapBody').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Carregando publicações do Recorte Eletrônico...</div>';
 
-    // Buscar lista de IDs
+  try {
     const r = await fetch(SNAP_WORKER, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({snapAction:'publicacoes', token})
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ snapAction: 'listar_publicacoes', limite: 20 })
     });
+
     const data = await r.json();
-    const ids = Array.isArray(data) ? data.map(p => p.idPublicacao || p.id || p) : [];
+    if (!r.ok || !data.ok) throw new Error(data.message || 'Erro ao buscar publicações');
 
-    if(ids.length === 0) {
-      document.getElementById('snapBody').innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center">Nenhuma publicação encontrada.</div>';
-      return;
-    }
-
-    document.getElementById('snapBody').innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3)">Carregando detalhes de '+ids.length+' publicação(ões)...</div>';
-
-    // Buscar detalhes das primeiras 20 (para não sobrecarregar)
-    const limite = Math.min(ids.length, 20);
-    const detalhes = [];
-    for(let i = 0; i < limite; i++) {
-      try {
-        const rd = await fetch(SNAP_WORKER, {
-          method: 'POST',
-          headers: {'Content-Type':'application/json'},
-          body: JSON.stringify({snapAction:'publicacao', token, id: ids[i]})
-        });
-        const det = await rd.json();
-        detalhes.push(det);
-      } catch(e) {
-        detalhes.push({idPublicacao: ids[i]});
-      }
-      // Atualizar progresso
-      document.getElementById('snapBody').innerHTML = '<div style="text-align:center;padding:1rem;color:var(--text3)">Carregando '+(i+1)+' de '+limite+'...</div>';
-    }
-
-    renderSnapPublicacoes(detalhes, ids.length);
-  } catch(e) {
-    document.getElementById('snapBody').innerHTML = '<div class="busca-erro">Erro: '+e.message+'</div>';
+    renderSnapPublicacoes(data.publicacoes || [], data.total || 0);
+  } catch (e) {
+    document.getElementById('snapBody').innerHTML = `<div class="busca-erro">Erro: ${escapeHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -777,69 +1009,100 @@ function fecharSNAP() {
   document.getElementById('snapOverlay').classList.remove('open');
 }
 
+function toggleTextoSNAP(id) {
+  const el = document.getElementById(`snap-texto-${id}`);
+  if (!el) return;
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
 function renderSnapPublicacoes(lista, total) {
   const el = document.getElementById('snapBody');
-  if(!lista || lista.length === 0) {
+
+  if (!Array.isArray(lista) || lista.length === 0) {
     el.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center">Nenhuma publicação encontrada.</div>';
     return;
   }
 
-  const aviso = total > lista.length ? '<div style="font-size:11px;color:var(--warn);margin-bottom:8px">Mostrando as '+lista.length+' publicações mais recentes de '+total+' encontradas.</div>' : '';
+  const aviso = total > lista.length
+    ? `<div style="font-size:11px;color:var(--warn);margin-bottom:8px">Mostrando as ${lista.length} publicações mais recentes de ${total} encontradas.</div>`
+    : '';
 
-  el.innerHTML = '<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">'+total+' publicação(ões) encontrada(s)</div>' + aviso +
-  lista.map((p) => {
-    const id = p.idPublicacao || p.id || '';
-    // Tentar vários campos possíveis da API SNAP
-    const texto = p.texto || p.conteudo || p.descricao || p.textoPublicacao || '';
-    const data_pub = p.data || p.dataPublicacao || p.dataPub || p.dataDisponibilizacao || '';
-    const jornal = p.jornal?.nome || p.nomeJornal || p.jornal || '';
-    const processo = p.numeroProcesso || p.processo || p.numProcesso || '';
-    const classe = p.classe || p.tipoDecisao || '';
-    const orgao = p.orgaoJulgador || p.vara || '';
-    const dataFmt = data_pub ? fmtDate(data_pub.slice(0,10)) : '';
+  el.innerHTML =
+    `<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${total} publicação(ões) encontrada(s)</div>` +
+    aviso +
+    lista.map((p, idx) => {
+      const id = escapeHtml(String(p.id || idx));
+      const processo = escapeHtml(p.processo || '');
+      const classe = escapeHtml(p.classe || '');
+      const vara = escapeHtml(p.vara || '');
+      const orgao = escapeHtml(p.orgao || '');
+      const jornal = escapeHtml(p.jornal || '');
+      const dataFmt = p.data ? fmtDate(p.data) : '';
+      const conteudo = escapeHtml(p.conteudo || '');
+      const partes = Array.isArray(p.partes) ? p.partes : [];
+      const dataSafe = toSafeJSONString(p);
 
-    const pStr = encodeURIComponent(JSON.stringify({
-      idPublicacao: id,
-      texto,
-      data: data_pub.slice(0,10),
-      jornal,
-      numeroProcesso: processo,
-    }));
+      return `<div class="busca-card" style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+          <div style="flex:1;min-width:0">
+            ${processo ? `<div class="busca-num">${processo}</div>` : ''}
+            ${classe ? `<div class="busca-classe">${classe}</div>` : ''}
+            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">
+              ${dataFmt ? `<span style="font-size:11px;color:var(--text3)">📅 ${dataFmt}</span>` : ''}
+              ${jornal ? `<span style="font-size:11px;color:var(--text3)">📰 ${jornal}</span>` : ''}
+              ${orgao ? `<span style="font-size:11px;color:var(--text3)">🏛 ${orgao}</span>` : ''}
+              ${vara ? `<span style="font-size:11px;color:var(--text3)">⚖ ${vara}</span>` : ''}
+            </div>
 
-    return '<div class="busca-card" style="margin-bottom:8px">' +
-      '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">' +
-        '<div style="flex:1">' +
-          (processo ? '<div class="busca-num">'+processo+'</div>' : '') +
-          (classe ? '<div style="font-size:13px;font-weight:500;margin-bottom:4px">'+classe+'</div>' : '') +
-          '<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">' +
-            (dataFmt ? '<span style="font-size:11px;color:var(--text3)">📅 '+dataFmt+'</span>' : '') +
-            (jornal ? '<span style="font-size:11px;color:var(--text3)">📰 '+jornal+'</span>' : '') +
-            (orgao ? '<span style="font-size:11px;color:var(--text3)">🏛 '+orgao+'</span>' : '') +
-            (!processo && !dataFmt && !jornal ? '<span style="font-size:11px;color:var(--text3)">ID: '+id+'</span>' : '') +
-          '</div>' +
-          (texto ? '<div style="font-size:12px;color:var(--text2);line-height:1.4">'+texto.slice(0,250)+(texto.length>250?'...':'')+'</div>' : '') +
-        '</div>' +
-        '<button class="btn" style="font-size:11px;padding:5px 10px;flex-shrink:0;background:var(--accent);color:white;border-color:var(--accent);margin-left:8px" onclick="usarPublicacaoSNAP(decodeURIComponent(\''+pStr+'\'))">+ Usar</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
+            ${partes.length ? `
+              <div class="snap-partes">
+                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Partes</div>
+                ${partes.map(parte => `
+                  <div style="font-size:12px;padding:3px 0">
+                    <span style="color:var(--text3)">${escapeHtml(parte.tipo || 'Parte')}:</span>
+                    <span style="font-weight:500">${escapeHtml(parte.nome || '')}</span>
+                  </div>
+                `).join('')}
+              </div>
+            ` : ''}
+
+            ${conteudo ? `<div class="snap-content-preview" style="margin-top:8px">${conteudo.slice(0, 350)}${conteudo.length > 350 ? '...' : ''}</div>` : ''}
+
+            <div class="snap-actions">
+              <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="toggleTextoSNAP('${id}')">Ver íntegra</button>
+              <button class="btn" style="font-size:11px;padding:5px 10px;background:var(--accent);color:white;border-color:var(--accent)" onclick="usarPublicacaoSNAP('${dataSafe}')">+ Usar</button>
+            </div>
+
+            <div id="snap-texto-${id}" class="snap-full-text" style="display:none">${conteudo || 'Sem conteúdo detalhado disponível.'}</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
 }
 
-function usarPublicacaoSNAP(pJson) {
-  const p = JSON.parse(pJson);
+function usarPublicacaoSNAP(dataEncoded) {
+  const p = fromSafeJSONString(dataEncoded);
   fecharSNAP();
-  const dataStr = p.data || p.dataPublicacao || '';
-  const dataLimpa = dataStr ? dataStr.slice(0,10) : '';
   openModal();
-  if(p.numeroProcesso || p.processo) document.getElementById('f_processo').value = p.numeroProcesso || p.processo || '';
-  if(dataLimpa) { document.getElementById('f_publicacao').value = dataLimpa; calcPrazo(); }
+
+  if (p.processo) document.getElementById('f_processo').value = p.processo;
+  if (p.data) document.getElementById('f_publicacao').value = p.data;
+
+  if (Array.isArray(p.partes) && p.partes.length) {
+    const preferencial = p.partes.find(x => /autor|requerente|exequente|impetrante|recorrente/i.test(x.tipo || '')) || p.partes[0];
+    if (preferencial?.nome) document.getElementById('f_cliente').value = preferencial.nome;
+  }
+
+  const descricaoBase = [p.classe, p.vara].filter(Boolean).join(' · ');
+  if (descricaoBase) document.getElementById('f_descricao').value = descricaoBase;
+
+  calcPrazo();
 }
 
 </script>
 
-<!-- MODAL SNAP -->
 <div class="modal-overlay" id="snapOverlay" onclick="if(event.target===this)fecharSNAP()" style="z-index:300">
-  <div class="modal" style="max-width:700px">
+  <div class="modal" style="max-width:760px">
     <div class="modal-header">
       <span class="modal-title">📰 Publicações do Recorte Eletrônico</span>
       <button class="btn-icon" onclick="fecharSNAP()">✕</button>
@@ -849,5 +1112,6 @@ function usarPublicacaoSNAP(pJson) {
     </div>
   </div>
 </div>
+
 </body>
 </html>
