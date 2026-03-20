@@ -1,1117 +1,1277 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tracker de Prazos</title>
-<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<style>
-  :root {
-    --bg: #F7F5F0; --surface: #FFFFFF; --surface2: #F0EDE6;
-    --border: #E2DDD4; --border2: #C8C3B8;
-    --text: #1A1816; --text2: #6B6560; --text3: #9C9590;
-    --accent: #1A3A2A; --accent-light: #E8F0EB;
-    --accent2: #C8472A; --accent2-light: #FAEDE9;
-    --warn: #B87010; --warn-light: #FBF3E0;
-    --ok: #1A6B3A; --ok-light: #E5F3EB;
-    --radius: 10px; --radius-sm: 6px;
-    --mono: 'DM Mono', monospace; --sans: 'Syne', sans-serif;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
-  header { background: var(--accent); color: white; padding: 0 2rem; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
-  .logo { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
-  .logo span { opacity: 0.5; font-weight: 400; margin-left: 8px; font-size: 12px; letter-spacing: 0.1em; }
-  .header-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  .btn { font-family: var(--sans); font-size: 13px; font-weight: 500; padding: 7px 16px; border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
-  .btn-primary { background: white; color: var(--accent); }
-  .btn-primary:hover { background: #e8f0eb; }
-  .btn-ghost { background: rgba(255,255,255,0.1); color: white; border-color: rgba(255,255,255,0.2); }
-  .btn-ghost:hover { background: rgba(255,255,255,0.2); }
-  .btn-outline { background: transparent; color: var(--text); border-color: var(--border2); }
-  .btn-outline:hover { background: var(--surface2); }
-  .container { max-width: 1200px; margin: 0 auto; padding: 2rem; }
-  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 2rem; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem 1.25rem; }
-  .stat-label { font-size: 11px; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); margin-bottom: 6px; }
-  .stat-value { font-size: 26px; font-weight: 700; font-family: var(--mono); color: var(--text); }
-  .stat-card.danger .stat-value { color: var(--accent2); }
-  .stat-card.warn .stat-value { color: var(--warn); }
-  .stat-card.ok .stat-value { color: var(--ok); }
-  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; gap: 1rem; flex-wrap: wrap; }
-  .section-title { font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text2); }
-  .filter-bar { display: flex; gap: 8px; margin-bottom: 1.5rem; flex-wrap: wrap; }
-  .filter-btn { font-family: var(--sans); font-size: 12px; font-weight: 500; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.15s; }
-  .filter-btn:hover { border-color: var(--border2); color: var(--text); }
-  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
-  .table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-  table { width: 100%; border-collapse: collapse; }
-  thead th { background: var(--surface2); padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border); white-space: nowrap; }
-  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
-  tbody tr:last-child { border-bottom: none; }
-  tbody tr:hover { background: var(--surface2); }
-  tbody td { padding: 12px 16px; vertical-align: middle; font-size: 13px; }
-  .process-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); }
-  .client-name { font-weight: 500; }
-  .client-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
-  .date-cell { font-family: var(--mono); font-size: 12px; }
-  .date-safe { color: var(--warn); font-weight: 500; }
-  .date-legal { color: var(--accent2); font-weight: 500; }
-  .badge { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
-  .badge-ok { background: var(--ok-light); color: var(--ok); }
-  .badge-warn { background: var(--warn-light); color: var(--warn); }
-  .badge-danger { background: var(--accent2-light); color: var(--accent2); }
-  .badge-vencido { background: #f0e8e8; color: #8B1A1A; }
-  .dias-restantes { font-family: var(--mono); font-size: 13px; font-weight: 500; }
-  .action-btns { display: flex; gap: 6px; }
-  .btn-icon { width: 28px; height: 28px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: transparent; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: all 0.15s; color: var(--text2); }
-  .btn-icon:hover { background: var(--surface2); border-color: var(--border2); }
-  .empty { padding: 4rem 2rem; text-align: center; color: var(--text3); }
-  .empty-icon { font-size: 32px; margin-bottom: 1rem; }
-  .empty-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
-  .empty-sub { font-size: 13px; }
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,8,0.5); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
-  .modal-overlay.open { display: flex; }
-  .modal { background: var(--surface); border-radius: 14px; width: 100%; max-width: 560px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .modal-header { padding: 1.5rem 1.5rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .modal-title { font-size: 16px; font-weight: 700; }
-  .modal-body { padding: 1.5rem; }
-  .modal-footer { padding: 1rem 1.5rem; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
-  .form-row { margin-bottom: 1.25rem; }
-  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem; }
-  label { display: block; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text2); margin-bottom: 6px; }
-  input[type="text"], input[type="date"], input[type="number"], input[type="email"], select, textarea {
-    width: 100%; font-family: var(--sans); font-size: 14px; padding: 9px 12px; border: 1px solid var(--border);
-    border-radius: var(--radius-sm); background: var(--bg); color: var(--text); outline: none; transition: border 0.15s; -webkit-appearance: none;
-  }
-  input:focus, select:focus, textarea:focus { border-color: var(--accent); background: white; }
-  .form-hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
-  .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-top: 1px solid var(--border); }
-  .toggle-label { font-size: 13px; color: var(--text); }
-  .toggle-sub { font-size: 11px; color: var(--text3); }
-  .toggle { position: relative; width: 38px; height: 22px; }
-  .toggle input { opacity: 0; width: 0; height: 0; }
-  .toggle-slider { position: absolute; inset: 0; background: var(--border2); border-radius: 11px; cursor: pointer; transition: 0.2s; }
-  .toggle-slider:before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: white; border-radius: 50%; transition: 0.2s; }
-  .toggle input:checked + .toggle-slider { background: var(--accent); }
-  .toggle input:checked + .toggle-slider:before { transform: translateX(16px); }
-  .preview-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1rem; margin-top: 1rem; }
-  .preview-row { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; font-size: 13px; gap: 1rem; }
-  .preview-row:not(:last-child) { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-bottom: 3px; }
-  .preview-row-label { color: var(--text2); }
-  .preview-row-val { font-family: var(--mono); font-weight: 500; text-align: right; }
-  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(10,10,8,0.4); z-index: 200; }
-  .detail-overlay.open { display: block; }
-  .detail-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 400px; background: var(--surface); border-left: 1px solid var(--border); overflow-y: auto; z-index: 201; transform: translateX(100%); transition: transform 0.25s ease; }
-  .detail-panel.open { transform: translateX(0); }
-  .detail-header { padding: 1.25rem 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: var(--surface); z-index: 1; }
-  .detail-body { padding: 1.5rem; }
-  .detail-section { margin-bottom: 1.5rem; }
-  .detail-section-title { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3); margin-bottom: 10px; }
-  .detail-field { margin-bottom: 10px; }
-  .detail-field-label { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
-  .detail-field-val { font-size: 14px; font-weight: 500; word-break: break-word; }
-  .prazo-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 10px; }
-  .prazo-card-title { font-size: 11px; color: var(--text3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
-  .prazo-card-date { font-size: 18px; font-weight: 700; font-family: var(--mono); }
-  .prazo-card-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
-  .prazo-card.safe { border-color: #e8b87a; background: var(--warn-light); }
-  .prazo-card.safe .prazo-card-date { color: var(--warn); }
-  .prazo-card.legal { border-color: #e8957a; background: var(--accent2-light); }
-  .prazo-card.legal .prazo-card-date { color: var(--accent2); }
-  .alert-channel { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; color: var(--text2); }
-  .channel-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .timeline { position: relative; padding-left: 20px; }
-  .timeline:before { content: ''; position: absolute; left: 6px; top: 4px; bottom: 4px; width: 1px; background: var(--border); }
-  .timeline-item { position: relative; margin-bottom: 12px; }
-  .timeline-dot { position: absolute; left: -17px; top: 4px; width: 8px; height: 8px; border-radius: 50%; border: 2px solid var(--surface); }
-  .timeline-date { font-family: var(--mono); font-size: 11px; color: var(--text3); }
-  .timeline-text { font-size: 13px; margin-top: 1px; }
-  .busca-tab { font-family: var(--sans); font-size: 12px; font-weight: 600; padding: 5px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all 0.15s; letter-spacing: 0.04em; }
-  .busca-tab:hover { border-color: var(--border2); color: var(--text); }
-  .busca-tab.active { background: var(--accent); color: white; border-color: var(--accent); }
-  .busca-card { border: 1px solid var(--border); border-radius: var(--radius); padding: 1rem; margin-bottom: 8px; cursor: pointer; transition: all 0.15s; }
-  .busca-card:hover { border-color: var(--accent); background: var(--accent-light); }
-  .busca-card.selected { border-color: var(--accent); border-width: 2px; background: var(--accent-light); }
-  .busca-num { font-family: var(--mono); font-size: 12px; font-weight: 500; color: var(--accent); margin-bottom: 4px; }
-  .busca-classe { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
-  .busca-meta { font-size: 12px; color: var(--text3); }
-  .busca-partes { margin-top: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
-  .busca-parte { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; align-items: center; }
-  .busca-parte-tipo { color: var(--text3); min-width: 80px; }
-  .busca-parte-nome { font-weight: 500; flex: 1; }
-  .busca-parte-sel { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; border: 1px solid var(--accent); color: var(--accent); cursor: pointer; margin-left: 4px; background: transparent; font-family: var(--sans); transition: all 0.15s; }
-  .busca-parte-sel:hover { background: var(--accent); color: white; }
-  .busca-loading { text-align: center; padding: 1.5rem; color: var(--text3); font-size: 13px; }
-  .busca-erro { padding: 1rem; background: var(--accent2-light); border-radius: var(--radius-sm); font-size: 13px; color: var(--accent2); }
-  .busca-tribunal { display: inline-flex; align-items: center; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 20px; background: var(--surface2); color: var(--text2); margin-right: 6px; }
-  .snap-content-preview { font-size: 12px; color: var(--text2); line-height: 1.45; white-space: pre-wrap; }
-  .snap-partes { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
-  .snap-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-  .snap-full-text { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 12px; margin-top: 12px; font-size: 12px; line-height: 1.5; white-space: pre-wrap; }
-  @media (max-width: 768px) {
-    .stats { grid-template-columns: repeat(2, 1fr); }
-    .detail-panel { width: 100%; }
-    .form-row-2 { grid-template-columns: 1fr; }
-    header { height: auto; padding: 1rem; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker de Prazos • SNAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      --bg:#f7f5f0;
+      --panel:#ffffff;
+      --panel-2:#f1ede4;
+      --line:#ddd7ca;
+      --line-strong:#c6bfb0;
+      --text:#191919;
+      --muted:#6b675f;
+      --accent:#8b1e1e;
+      --accent-2:#b93535;
+      --ok:#1f7a46;
+      --warn:#a66a00;
+      --danger:#a12828;
+      --shadow:0 12px 35px rgba(0,0,0,.08);
+      --radius:20px;
+      --radius-sm:14px;
+      --mono:"DM Mono", monospace;
+      --sans:"Syne", system-ui, sans-serif;
+    }
+
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+    body{min-height:100vh}
+
+    .app{
+      width:min(1480px, calc(100% - 32px));
+      margin:24px auto 40px;
+    }
+
+    .topbar{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:18px;
+      margin-bottom:18px;
+    }
+
+    .hero, .status-card, .filters, .results, .drawer, .empty{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
+
+    .hero{
+      padding:28px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:180px;
+      justify-content:center;
+      background:
+        radial-gradient(circle at top right, rgba(139,30,30,.10), transparent 30%),
+        linear-gradient(180deg, #fff, #fbfaf7);
+    }
+
+    .eyebrow{
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(30px, 4vw, 48px);
+      line-height:1.02;
+      letter-spacing:-.04em;
+    }
+
+    .hero p{
+      margin:0;
+      color:var(--muted);
+      max-width:780px;
+      font-size:15px;
+      line-height:1.6;
+    }
+
+    .status-card{
+      padding:22px;
+      display:grid;
+      gap:14px;
+      align-content:start;
+    }
+
+    .status-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .mini{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      background:linear-gradient(180deg,#fff,#faf8f2);
+    }
+
+    .mini .k{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+
+    .mini .v{
+      font-size:20px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .filters{
+      padding:18px;
+      margin-bottom:18px;
+    }
+
+    .filters-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:16px;
+    }
+
+    .filters-title{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .filters-grid{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0,1fr));
+      gap:12px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .field.span-2{grid-column:span 2}
+    .field.span-3{grid-column:span 3}
+    .field.span-6{grid-column:span 6}
+
+    label{
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+    }
+
+    input, select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      border-radius:14px;
+      min-height:46px;
+      padding:12px 14px;
+      font:inherit;
+      outline:none;
+      transition:.18s ease;
+    }
+
+    textarea{
+      min-height:100px;
+      resize:vertical;
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color:var(--line-strong);
+      box-shadow:0 0 0 4px rgba(139,30,30,.08);
+    }
+
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      border-radius:14px;
+      min-height:46px;
+      padding:0 16px;
+      font-family:var(--sans);
+      font-size:14px;
+      font-weight:700;
+      transition:.18s ease;
+    }
+
+    .btn-primary{
+      background:linear-gradient(180deg,var(--accent-2),var(--accent));
+      color:#fff;
+      box-shadow:0 10px 24px rgba(139,30,30,.22);
+    }
+    .btn-primary:hover{transform:translateY(-1px)}
+    .btn-secondary{
+      background:var(--panel-2);
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-ghost{
+      background:#fff;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-danger{
+      background:#fff3f3;
+      color:var(--danger);
+      border:1px solid #efc7c7;
+    }
+
+    .results{
+      overflow:hidden;
+    }
+
+    .results-head{
+      padding:18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:linear-gradient(180deg,#fff,#fbfaf7);
+    }
+
+    .results-title{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .table-wrap{
+      overflow:auto;
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:1180px;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      background:#faf8f3;
+      border-bottom:1px solid var(--line);
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-size:11px;
+      text-align:left;
+      padding:14px 12px;
+      z-index:2;
+    }
+
+    tbody td{
+      border-bottom:1px solid #efeae0;
+      padding:14px 12px;
+      vertical-align:top;
+      font-size:14px;
+    }
+
+    tbody tr:hover{
+      background:#fcfbf8;
+    }
+
+    .mono{
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.5;
+      word-break:break-word;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border-radius:999px;
+      padding:7px 11px;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      border:1px solid var(--line);
+      background:#fff;
+      white-space:nowrap;
+    }
+
+    .badge.ok{color:var(--ok); background:#edf8f1; border-color:#cce8d5}
+    .badge.warn{color:var(--warn); background:#fff5e5; border-color:#ecd8ad}
+    .badge.danger{color:var(--danger); background:#fff0f0; border-color:#ebc8c8}
+
+    .cell-title{
+      font-weight:700;
+      margin-bottom:6px;
+      line-height:1.35;
+    }
+
+    .cell-sub{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .text-preview{
+      max-width:540px;
+      line-height:1.55;
+      color:#272727;
+      white-space:pre-wrap;
+    }
+
+    .row-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .small-btn{
+      min-height:36px;
+      padding:0 12px;
+      border-radius:12px;
+      font-size:12px;
+    }
+
+    .layout-bottom{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      margin-top:18px;
+    }
+
+    .drawer{
+      padding:18px;
+    }
+
+    .drawer h2{
+      margin:0 0 12px;
+      font-size:20px;
+      letter-spacing:-.03em;
+    }
+
+    .drawer .muted{
+      color:var(--muted);
+      line-height:1.6;
+      font-size:14px;
+    }
+
+    .details-box{
+      margin-top:14px;
+      border:1px solid var(--line);
+      background:#fcfbf8;
+      border-radius:16px;
+      padding:16px;
+      min-height:220px;
+    }
+
+    .details-empty{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns:160px 1fr;
+      gap:10px;
+      padding:10px 0;
+      border-bottom:1px dashed #e3ddd1;
+    }
+
+    .kv:last-child{border-bottom:none}
+    .kv .key{
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.10em;
+    }
+    .kv .val{
+      line-height:1.6;
+      word-break:break-word;
+    }
+
+    .empty{
+      padding:30px;
+      text-align:center;
+      color:var(--muted);
+      margin-top:18px;
+      display:none;
+    }
+
+    .footer-note{
+      margin-top:12px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .pill-input{
+      display:flex;
+      gap:8px;
+      align-items:center;
+    }
+
+    .pill-input input[type="date"]{
+      min-width:0;
+    }
+
+    .loader{
+      width:18px;
+      height:18px;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,.35);
+      border-top-color:#fff;
+      display:inline-block;
+      animation:spin .8s linear infinite;
+      vertical-align:middle;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg)}
+    }
+
+    @media (max-width: 1100px){
+      .topbar, .layout-bottom{grid-template-columns:1fr}
+      .filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .field.span-2,.field.span-3,.field.span-6{grid-column:span 2}
+    }
+
+    @media (max-width: 680px){
+      .app{width:min(100% - 18px, 100%)}
+      .hero,.status-card,.filters,.results,.drawer,.empty{border-radius:18px}
+      .filters-grid{grid-template-columns:1fr}
+      .field.span-2,.field.span-3,.field.span-6{grid-column:span 1}
+      .status-grid{grid-template-columns:1fr 1fr}
+      .kv{grid-template-columns:1fr}
+    }
+  </style>
 </head>
 <body>
+  <div class="app">
+    <section class="topbar">
+      <div class="hero">
+        <div class="eyebrow">Tracker de Prazos • SNAP</div>
+        <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
+        <p>
+          Interface refeita do zero para consultar publicações via Worker, revisar conteúdo,
+          identificar processo/vara/partes e registrar prazo final no próprio painel.
+        </p>
+      </div>
 
-<header>
-  <div class="logo">Prazos <span>ESCRITÓRIO</span></div>
-  <div class="header-actions">
-    <button class="btn btn-ghost" onclick="abrirSNAP()" id="btnSNAP">📰 Publicações</button>
-    <button class="btn btn-ghost" onclick="atualizarTodos()" id="btnAtualizar">↻ Atualizar</button>
-    <button class="btn btn-ghost" onclick="exportCSV()">↓ Exportar</button>
-    <button class="btn btn-primary" onclick="openModal()">+ Novo prazo</button>
-  </div>
-</header>
-
-<div id="updateBar" style="display:none;background:var(--accent);color:white;padding:8px 2rem;font-size:12px;font-weight:500;align-items:center;gap:10px">
-  <span id="updateBarMsg">Verificando atualizações...</span>
-  <div style="flex:1;height:3px;background:rgba(255,255,255,0.2);border-radius:2px;overflow:hidden">
-    <div id="updateProgressBar" style="height:100%;background:white;width:0%;transition:width 0.3s"></div>
-  </div>
-</div>
-
-<div class="container">
-  <div class="stats" id="statsBar"></div>
-  <div class="section-header">
-    <span class="section-title">Processos ativos</span>
-    <div class="filter-bar" style="margin:0">
-      <button class="filter-btn active" onclick="setFilter('todos',this)">Todos</button>
-      <button class="filter-btn" onclick="setFilter('vencendo',this)">Vencendo em breve</button>
-      <button class="filter-btn" onclick="setFilter('urgente',this)">Urgente</button>
-      <button class="filter-btn" onclick="setFilter('ok',this)">Em dia</button>
-    </div>
-  </div>
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th>Processo</th><th>Cliente</th><th>Publicação</th><th>Dias úteis</th>
-        <th>Data segura</th><th>Prazo fatal</th><th>Situação</th>
-        <th>Dias restantes</th><th>Verificado</th><th></th>
-      </tr></thead>
-      <tbody id="tableBody"></tbody>
-    </table>
-    <div id="emptyState" class="empty" style="display:none">
-      <div class="empty-icon">📋</div>
-      <div class="empty-title">Nenhum processo cadastrado</div>
-      <div class="empty-sub">Clique em "+ Novo prazo" para começar</div>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="modalOverlay" onclick="handleOverlayClick(event)">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="modalTitle">Novo prazo</span>
-      <button class="btn-icon" onclick="closeModal()">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="form-row">
-        <label>Buscar processo</label>
-        <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-          <button class="busca-tab active" onclick="setBuscaTab('processo',this)">Nº Processo</button>
-          <button class="busca-tab" onclick="setBuscaTab('oab',this)">OAB</button>
-          <button class="busca-tab" onclick="setBuscaTab('cnpj',this)">CNPJ</button>
-          <button class="busca-tab" onclick="setBuscaTab('cpf',this)">CPF</button>
+      <div class="status-card">
+        <div class="filters-title">Painel rápido</div>
+        <div class="status-grid">
+          <div class="mini">
+            <div class="k">Conexão</div>
+            <div class="v" id="connStatus">Aguardando</div>
+          </div>
+          <div class="mini">
+            <div class="k">Resultados</div>
+            <div class="v" id="resultsCount">0</div>
+          </div>
+          <div class="mini">
+            <div class="k">Prazos salvos</div>
+            <div class="v" id="savedDeadlinesCount">0</div>
+          </div>
+          <div class="mini">
+            <div class="k">Última busca</div>
+            <div class="v" id="lastFetch">—</div>
+          </div>
         </div>
-        <div style="display:flex;gap:8px">
-          <input type="text" id="f_busca" placeholder="Número do processo CNJ" style="flex:1" onkeydown="if(event.key==='Enter')buscarProcesso()">
-          <select id="f_oab_uf" style="display:none;width:130px;flex-shrink:0">
-            <option value="">Todos os estados</option>
-            <option>AC</option><option>AL</option><option>AM</option><option>AP</option><option>BA</option>
-            <option>CE</option><option>DF</option><option>ES</option><option>GO</option><option>MA</option>
-            <option>MG</option><option>MS</option><option>MT</option><option>PA</option><option>PB</option>
-            <option>PE</option><option>PI</option><option>PR</option><option>RJ</option><option>RN</option>
-            <option>RO</option><option>RR</option><option>RS</option><option>SC</option><option>SE</option>
-            <option>SP</option><option>TO</option>
+        <div id="globalMessage" class="footer-note">
+          Configure o endpoint do Worker no topo do arquivo e faça a primeira consulta.
+        </div>
+      </div>
+    </section>
+
+    <section class="filters">
+      <div class="filters-header">
+        <div class="filters-title">Filtros de busca</div>
+        <div class="actions">
+          <button class="btn-primary" id="btnBuscar">Buscar publicações</button>
+          <button class="btn-secondary" id="btnHoje">Hoje</button>
+          <button class="btn-ghost" id="btn7dias">Últimos 7 dias</button>
+          <button class="btn-ghost" id="btn30dias">Últimos 30 dias</button>
+          <button class="btn-danger" id="btnLimpar">Limpar filtros</button>
+        </div>
+      </div>
+
+      <div class="filters-grid">
+        <div class="field">
+          <label for="desde">Desde</label>
+          <input type="date" id="desde" />
+        </div>
+
+        <div class="field">
+          <label for="ate">Até</label>
+          <input type="date" id="ate" />
+        </div>
+
+        <div class="field">
+          <label for="limit">Limite</label>
+          <select id="limit">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
           </select>
-          <button class="btn" style="background:var(--accent);color:white;border-color:var(--accent);white-space:nowrap" onclick="buscarProcesso()" id="btnBuscar">Buscar</button>
         </div>
-        <div class="form-hint" id="buscaHint">Ex: 0000000-00.0000.8.13.0024</div>
+
+        <div class="field">
+          <label for="comTexto">Trazer texto</label>
+          <select id="comTexto">
+            <option value="true" selected>Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </div>
+
+        <div class="field span-2">
+          <label for="buscaLivre">Filtro local por termo</label>
+          <input
+            type="text"
+            id="buscaLivre"
+            placeholder="processo, parte, vara, tribunal, trecho do texto..."
+          />
+        </div>
+
+        <div class="field span-2">
+          <label for="somenteComPrazo">Exibição</label>
+          <select id="somenteComPrazo">
+            <option value="todos" selected>Todas as publicações</option>
+            <option value="comPrazo">Somente com prazo salvo</option>
+            <option value="semPrazo">Somente sem prazo salvo</option>
+          </select>
+        </div>
+
+        <div class="field span-6">
+          <label for="workerUrl">Endpoint do Worker</label>
+          <input
+            type="text"
+            id="workerUrl"
+            placeholder="https://seu-worker.seudominio.workers.dev"
+          />
+        </div>
       </div>
-      <div id="buscaResultado" style="display:none;margin-bottom:1.25rem"></div>
-      <div id="formProcesso">
-        <div class="form-row">
-          <label>Número do processo</label>
-          <input type="text" id="f_processo" placeholder="0000000-00.0000.0.00.0000">
+
+      <div class="footer-note">
+        O front não envia senha da SNAP. A autenticação deve ocorrer dentro do Worker com secrets.
+      </div>
+    </section>
+
+    <section class="results">
+      <div class="results-head">
+        <div class="results-title">Publicações encontradas</div>
+        <div class="actions">
+          <button class="btn-secondary" id="btnExportarJson">Exportar JSON</button>
+          <button class="btn-secondary" id="btnApagarPrazos">Apagar prazos salvos</button>
         </div>
-        <div class="form-row-2">
-          <div><label>Cliente</label><input type="text" id="f_cliente" placeholder="Nome do cliente"></div>
-          <div><label>Advogado responsável</label>
-            <select id="f_advogado">
-              <option value="luiz">Luiz Beltrão</option>
-              <option value="outro">Outro advogado</option>
-            </select>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:130px;">Data</th>
+              <th style="width:160px;">Diário / Tribunal</th>
+              <th style="width:190px;">Processo / Vara</th>
+              <th style="width:240px;">Partes</th>
+              <th>Texto</th>
+              <th style="width:180px;">Prazo</th>
+              <th style="width:180px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="empty" id="emptyState">
+      Nenhuma publicação para exibir no momento.
+    </div>
+
+    <section class="layout-bottom">
+      <div class="drawer">
+        <h2>Detalhes da publicação</h2>
+        <div class="muted">
+          Clique em “Ver detalhes” em uma linha para abrir o conteúdo completo abaixo.
+        </div>
+        <div class="details-box" id="detailsBox">
+          <div class="details-empty">Nenhuma publicação selecionada.</div>
+        </div>
+      </div>
+
+      <div class="drawer">
+        <h2>Regras do prazo</h2>
+        <div class="muted">
+          Este painel foi configurado para considerar, por padrão, que o termo inicial do prazo é
+          o próprio dia da publicação, conforme sua diretriz operacional. O prazo final pode ser
+          lançado manualmente em cada linha.
+        </div>
+        <div class="details-box">
+          <div class="kv">
+            <div class="key">Termo inicial</div>
+            <div class="val">Data da publicação</div>
+          </div>
+          <div class="kv">
+            <div class="key">Persistência</div>
+            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
+          </div>
+          <div class="kv">
+            <div class="key">Segurança</div>
+            <div class="val">Senha da API não fica exposta no front-end.</div>
+          </div>
+          <div class="kv">
+            <div class="key">Busca</div>
+            <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
           </div>
         </div>
       </div>
-      <div class="form-row-2">
-        <div><label>Data da publicação</label><input type="date" id="f_publicacao" onchange="calcPrazo()"></div>
-        <div><label>Prazo (dias úteis)</label><input type="number" id="f_dias" placeholder="Ex: 15" min="1" max="365" onchange="calcPrazo()" oninput="calcPrazo()"></div>
-      </div>
-      <div class="form-row">
-        <label>Descrição / tipo de decisão</label>
-        <input type="text" id="f_descricao" placeholder="Ex: Recurso de apelação, impugnação...">
-      </div>
-      <div class="preview-box" id="previewBox" style="display:none">
-        <div style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;">Datas calculadas</div>
-        <div class="preview-row"><span class="preview-row-label">Início da contagem</span><span class="preview-row-val" id="prev_inicio">—</span></div>
-        <div class="preview-row"><span class="preview-row-label">⚠ Data segura</span><span class="preview-row-val" style="color:var(--warn)" id="prev_segura">—</span></div>
-        <div class="preview-row"><span class="preview-row-label">🔴 Prazo fatal (legal)</span><span class="preview-row-val" style="color:var(--accent2)" id="prev_legal">—</span></div>
-        <div class="preview-row"><span class="preview-row-label">Alerta D-2</span><span class="preview-row-val" id="prev_alerta">—</span></div>
-      </div>
-      <div style="margin-top:1.25rem">
-        <div style="font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--text2);margin-bottom:10px;">Alertas</div>
-        <div class="toggle-row"><div><div class="toggle-label">Enviar por e-mail</div><div class="toggle-sub">Gmail</div></div><label class="toggle"><input type="checkbox" id="f_email" checked><span class="toggle-slider"></span></label></div>
-        <div class="toggle-row"><div><div class="toggle-label">Enviar por WhatsApp</div><div class="toggle-sub">Mensagem automática</div></div><label class="toggle"><input type="checkbox" id="f_whatsapp"><span class="toggle-slider"></span></label></div>
-        <div class="toggle-row"><div><div class="toggle-label">Google Agenda</div><div class="toggle-sub">3 eventos criados automaticamente</div></div><label class="toggle"><input type="checkbox" id="f_agenda" checked><span class="toggle-slider"></span></label></div>
-        <div class="toggle-row" style="border-bottom:none"><div><div class="toggle-label">Notificar cliente</div><div class="toggle-sub">Configure o e-mail do cliente</div></div><label class="toggle"><input type="checkbox" id="f_notif_cliente" onchange="toggleClienteEmail()"><span class="toggle-slider"></span></label></div>
-        <div id="clienteEmailRow" style="display:none;margin-top:8px"><input type="email" id="f_cliente_email" placeholder="E-mail do cliente"></div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" style="background:var(--accent);color:white;border-color:var(--accent)" onclick="salvarProcesso()">Salvar processo</button>
-    </div>
+    </section>
   </div>
-</div>
 
-<div class="detail-overlay" id="detailOverlay" onclick="closeDetail()"></div>
-<div class="detail-panel" id="detailPanel">
-  <div class="detail-header">
-    <span class="modal-title" id="detailTitle">Processo</span>
-    <div style="display:flex;gap:8px">
-      <button class="btn btn-outline" style="font-size:12px;padding:5px 12px" id="detailEditBtn" onclick="editarDoDetalhe()">Editar</button>
-      <button class="btn-icon" onclick="closeDetail()">✕</button>
-    </div>
-  </div>
-  <div class="detail-body" id="detailBody"></div>
-</div>
+  <script>
+    /******************************************************************
+     * CONFIG CENTRAL
+     * Ajuste aqui e não espalhado no código.
+     ******************************************************************/
+    const CONFIG = {
+      defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
+      storageKeyDeadlines: "snap_tracker_deadlines_v2",
+      storageKeyWorkerUrl: "snap_worker_url",
 
-<script>
-const feriados = new Set([
-  '2025-01-01','2025-04-18','2025-04-21','2025-05-01','2025-09-07','2025-10-12','2025-11-02','2025-11-15','2025-11-20','2025-12-25',
-  '2026-01-01','2026-04-03','2026-04-21','2026-05-01','2026-09-07','2026-10-12','2026-11-02','2026-11-15','2026-11-20','2026-12-25',
-  '2025-02-28','2025-03-04','2025-06-19','2025-08-15','2025-12-08','2025-12-24','2025-12-31',
-  '2026-02-16','2026-02-17','2026-06-04','2026-08-15','2026-12-08','2026-12-24','2026-12-31',
-]);
+      /**
+       * Ajuste os nomes abaixo para bater com o seu Worker.
+       * Mantive um padrão simples para evitar Frankenstein.
+       */
+      actionListarPublicacoes: "listarPublicacoes",
+      actionDetalharPublicacao: "detalharPublicacao",
 
-function escapeHtml(str) {
-  return String(str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+      /**
+       * Se o seu Worker já devolver todos os detalhes na listagem,
+       * pode deixar false e o botão "Ver detalhes" usa a própria linha.
+       */
+      usarEndpointDetalhe: false
+    };
 
-function toSafeJSONString(obj) {
-  return encodeURIComponent(JSON.stringify(obj || {}));
-}
+    const state = {
+      rawItems: [],
+      filteredItems: [],
+      selectedItem: null,
+      deadlines: loadDeadlines(),
+      loading: false
+    };
 
-function fromSafeJSONString(str) {
-  return JSON.parse(decodeURIComponent(str));
-}
+    const $ = (id) => document.getElementById(id);
 
-function isUtil(d) {
-  const dia = d.getDay();
-  if (dia === 0 || dia === 6) return false;
-  return !feriados.has(d.toISOString().slice(0,10));
-}
+    const els = {
+      desde: $("desde"),
+      ate: $("ate"),
+      limit: $("limit"),
+      comTexto: $("comTexto"),
+      buscaLivre: $("buscaLivre"),
+      somenteComPrazo: $("somenteComPrazo"),
+      workerUrl: $("workerUrl"),
+      btnBuscar: $("btnBuscar"),
+      btnHoje: $("btnHoje"),
+      btn7dias: $("btn7dias"),
+      btn30dias: $("btn30dias"),
+      btnLimpar: $("btnLimpar"),
+      btnExportarJson: $("btnExportarJson"),
+      btnApagarPrazos: $("btnApagarPrazos"),
+      resultsBody: $("resultsBody"),
+      emptyState: $("emptyState"),
+      detailsBox: $("detailsBox"),
+      connStatus: $("connStatus"),
+      resultsCount: $("resultsCount"),
+      savedDeadlinesCount: $("savedDeadlinesCount"),
+      lastFetch: $("lastFetch"),
+      globalMessage: $("globalMessage")
+    };
 
-function somarDiasUteis(s, n) {
-  let d = new Date(s + 'T12:00:00');
-  let c = isUtil(d) ? 1 : 0;
-  while (c < n) {
-    d.setDate(d.getDate() + 1);
-    if (isUtil(d)) c++;
-  }
-  return d.toISOString().slice(0,10);
-}
+    init();
 
-function proxUtil(s) {
-  let d = new Date(s + 'T12:00:00');
-  while (!isUtil(d)) d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0,10);
-}
+    function init() {
+      els.workerUrl.value = CONFIG.defaultWorkerUrl;
+      presetLast7Days();
+      updateDashboard();
 
-function subDiasUteis(s, n) {
-  let d = new Date(s + 'T12:00:00'), c = 0;
-  while (c < n) {
-    d.setDate(d.getDate() - 1);
-    if (isUtil(d)) c++;
-  }
-  return d.toISOString().slice(0,10);
-}
+      els.btnBuscar.addEventListener("click", handleBuscar);
+      els.btnHoje.addEventListener("click", presetToday);
+      els.btn7dias.addEventListener("click", presetLast7Days);
+      els.btn30dias.addEventListener("click", presetLast30Days);
+      els.btnLimpar.addEventListener("click", clearFilters);
+      els.btnExportarJson.addEventListener("click", exportJson);
+      els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
 
-function calcDatas(pub, dias) {
-  const legal = proxUtil(somarDiasUteis(pub, parseInt(dias)));
-  const segura = subDiasUteis(legal, 2);
-  return { segura, legal, alerta: segura };
-}
-
-function normDate(s) {
-  if (!s) return '';
-  const str = String(s).slice(0,10);
-  return str.replace(/[^0-9-]/g,'').substring(0,10);
-}
-
-function fmtDate(s) {
-  if (!s) return '—';
-  const n = normDate(s);
-  if (!n) return '—';
-  const [y,m,d] = n.split('-');
-  if (!y || !m || !d) return '—';
-  return `${d}/${m}/${y}`;
-}
-
-function fmtDateHora(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-}
-
-function diasRestantes(s) {
-  const h = new Date();
-  h.setHours(0,0,0,0);
-  const ns = normDate(s);
-  if (!ns) return 0;
-  return Math.ceil((new Date(ns + 'T00:00:00') - h) / 86400000);
-}
-
-// === SHEETS ===
-const SHEETS_API = 'https://proxy-datajud.luiz-841.workers.dev/sheets';
-
-let processos = [], editId = null, filtroAtivo = 'todos';
-
-async function carregarDoSheets() {
-  try {
-    const r = await fetch(SHEETS_API + '?action=listar');
-    const d = await r.json();
-    if (d.processos) {
-      processos = d.processos;
-      localStorage.setItem('prazos_processos', JSON.stringify(processos));
-    }
-  } catch (e) {
-    console.warn('Sheets indisponível, usando cache local:', e);
-    processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
-  }
-}
-
-function salvar() {
-  localStorage.setItem('prazos_processos', JSON.stringify(processos));
-}
-
-async function salvarNoSheets(processo) {
-  try {
-    const r = await fetch(SHEETS_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'salvar',processo})
-    });
-    const d = await r.json();
-    if (!d.ok) console.warn('Sheets salvar:', d);
-  } catch(e) {
-    console.warn('Erro salvar Sheets:', e);
-  }
-}
-
-async function excluirDoSheets(id) {
-  try {
-    const r = await fetch(SHEETS_API,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({action:'excluir',id})
-    });
-    const d = await r.json();
-    if (!d.ok) console.warn('Sheets excluir:', d);
-  } catch(e) {
-    console.warn('Erro excluir Sheets:', e);
-  }
-}
-
-function statusCalc(p) {
-  const dr = diasRestantes(p.dataLegal);
-  if (dr < 0) return 'vencido';
-  if (dr <= 2) return 'urgente';
-  if (diasRestantes(p.dataSegura) <= 3) return 'vencendo';
-  return 'ok';
-}
-
-function render() {
-  renderStats();
-  renderTable();
-}
-
-function renderStats() {
-  const t = processos.length;
-  const u = processos.filter(p => statusCalc(p) === 'urgente').length;
-  const v = processos.filter(p => statusCalc(p) === 'vencendo').length;
-  const o = processos.filter(p => statusCalc(p) === 'ok').length;
-
-  document.getElementById('statsBar').innerHTML = `
-    <div class="stat-card"><div class="stat-label">Total</div><div class="stat-value">${t}</div></div>
-    <div class="stat-card danger"><div class="stat-label">Urgente</div><div class="stat-value">${u}</div></div>
-    <div class="stat-card warn"><div class="stat-label">Vencendo</div><div class="stat-value">${v}</div></div>
-    <div class="stat-card ok"><div class="stat-label">Em dia</div><div class="stat-value">${o}</div></div>`;
-}
-
-function renderTable() {
-  let lista = [...processos];
-  if (filtroAtivo === 'urgente') lista = lista.filter(p => statusCalc(p) === 'urgente');
-  else if (filtroAtivo === 'vencendo') lista = lista.filter(p => ['urgente','vencendo'].includes(statusCalc(p)));
-  else if (filtroAtivo === 'ok') lista = lista.filter(p => statusCalc(p) === 'ok');
-
-  lista.sort((a,b) => new Date(a.dataLegal) - new Date(b.dataLegal));
-
-  const tbody = document.getElementById('tableBody');
-  const empty = document.getElementById('emptyState');
-
-  if (lista.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-    return;
-  }
-
-  empty.style.display = 'none';
-
-  const bm = {
-    ok:'<span class="badge badge-ok">Em dia</span>',
-    vencendo:'<span class="badge badge-warn">Vencendo</span>',
-    urgente:'<span class="badge badge-danger">Urgente</span>',
-    vencido:'<span class="badge badge-vencido">Vencido</span>'
-  };
-
-  tbody.innerHTML = lista.map(p => {
-    const st = statusCalc(p);
-    const dr = diasRestantes(p.dataLegal);
-    const drt = dr < 0
-      ? `<span style="color:var(--accent2)">${dr}d</span>`
-      : dr === 0
-        ? `<span style="color:var(--accent2)">Hoje</span>`
-        : `<span class="dias-restantes" style="color:${dr<=2?'var(--accent2)':dr<=5?'var(--warn)':'var(--ok)'}">${dr}d</span>`;
-
-    return `<tr onclick="openDetail('${escapeHtml(p.id)}')" style="cursor:pointer">
-      <td><div class="process-num">${escapeHtml(p.processo || '—')}</div></td>
-      <td><div class="client-name">${escapeHtml(p.cliente || '—')}</div><div class="client-sub">${p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro advogado'}</div></td>
-      <td><span class="date-cell">${fmtDate(p.publicacao)}</span></td>
-      <td style="text-align:center;font-family:var(--mono)">${escapeHtml(String(p.dias ?? ''))}</td>
-      <td><span class="date-cell date-safe">${fmtDate(p.dataSegura)}</span></td>
-      <td><span class="date-cell date-legal">${fmtDate(p.dataLegal)}</span></td>
-      <td>${bm[st]}</td>
-      <td>${drt}</td>
-      <td style="font-size:11px;color:var(--text3);white-space:nowrap">${p.ultimaVerificacao ? fmtDateHora(p.ultimaVerificacao) : '—'}</td>
-      <td onclick="event.stopPropagation()"><div class="action-btns">
-        <button class="btn-icon" onclick="editarProcesso('${escapeHtml(p.id)}')">✎</button>
-        <button class="btn-icon" onclick="excluirProcesso('${escapeHtml(p.id)}')">✕</button>
-      </div></td>
-    </tr>`;
-  }).join('');
-}
-
-function setFilter(f, el) {
-  filtroAtivo = f;
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  renderTable();
-}
-
-function openModal(id) {
-  editId = id || null;
-  document.getElementById('modalTitle').textContent = id ? 'Editar prazo' : 'Novo prazo';
-
-  if (id) {
-    const p = processos.find(x => x.id === id);
-    if (!p) return;
-
-    document.getElementById('f_processo').value = p.processo || '';
-    document.getElementById('f_cliente').value = p.cliente || '';
-    document.getElementById('f_advogado').value = p.advogado || 'luiz';
-    document.getElementById('f_publicacao').value = p.publicacao || '';
-    document.getElementById('f_dias').value = p.dias || '';
-    document.getElementById('f_descricao').value = p.descricao || '';
-    document.getElementById('f_email').checked = !!p.alertaEmail;
-    document.getElementById('f_whatsapp').checked = !!p.alertaWhatsapp;
-    document.getElementById('f_agenda').checked = !!p.alertaAgenda;
-    document.getElementById('f_notif_cliente').checked = !!p.notifCliente;
-    document.getElementById('f_cliente_email').value = p.clienteEmail || '';
-    document.getElementById('clienteEmailRow').style.display = p.notifCliente ? 'block' : 'none';
-    calcPrazo();
-  } else {
-    ['f_processo','f_cliente','f_publicacao','f_dias','f_descricao','f_cliente_email','f_busca'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
-    document.getElementById('f_advogado').value = 'luiz';
-    document.getElementById('f_email').checked = true;
-    document.getElementById('f_whatsapp').checked = false;
-    document.getElementById('f_agenda').checked = true;
-    document.getElementById('f_notif_cliente').checked = false;
-    document.getElementById('clienteEmailRow').style.display = 'none';
-    document.getElementById('previewBox').style.display = 'none';
-    document.getElementById('buscaResultado').style.display = 'none';
-    document.getElementById('buscaResultado').innerHTML = '';
-  }
-
-  document.getElementById('modalOverlay').classList.add('open');
-}
-
-function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
-function handleOverlayClick(e){ if (e.target === document.getElementById('modalOverlay')) closeModal(); }
-function toggleClienteEmail(){ document.getElementById('clienteEmailRow').style.display = document.getElementById('f_notif_cliente').checked ? 'block' : 'none'; }
-
-function calcPrazo() {
-  const pub = document.getElementById('f_publicacao').value;
-  const dias = document.getElementById('f_dias').value;
-  if (!pub || !dias) {
-    document.getElementById('previewBox').style.display = 'none';
-    return;
-  }
-  const { segura, legal, alerta } = calcDatas(pub, dias);
-  document.getElementById('prev_inicio').textContent = fmtDate(pub) + ' (dia 1 - modo conservador)';
-  document.getElementById('prev_segura').textContent = fmtDate(segura);
-  document.getElementById('prev_legal').textContent = fmtDate(legal);
-  document.getElementById('prev_alerta').textContent = fmtDate(alerta);
-  document.getElementById('previewBox').style.display = 'block';
-}
-
-function salvarProcesso() {
-  const pub = document.getElementById('f_publicacao').value;
-  const dias = document.getElementById('f_dias').value;
-  if (!pub || !dias) {
-    alert('Preencha a data de publicação e o número de dias úteis.');
-    return;
-  }
-
-  const { segura, legal, alerta } = calcDatas(pub, parseInt(dias));
-  const anterior = editId ? processos.find(x => x.id === editId) : null;
-
-  const obj = {
-    id: editId || Date.now().toString(),
-    processo: document.getElementById('f_processo').value.trim(),
-    cliente: document.getElementById('f_cliente').value.trim(),
-    advogado: document.getElementById('f_advogado').value,
-    publicacao: pub,
-    dias: parseInt(dias),
-    descricao: document.getElementById('f_descricao').value.trim(),
-    dataSegura: segura,
-    dataLegal: legal,
-    dataAlerta: alerta,
-    alertaEmail: document.getElementById('f_email').checked,
-    alertaWhatsapp: document.getElementById('f_whatsapp').checked,
-    alertaAgenda: document.getElementById('f_agenda').checked,
-    notifCliente: document.getElementById('f_notif_cliente').checked,
-    clienteEmail: document.getElementById('f_cliente_email').value.trim(),
-    criadoEm: anterior?.criadoEm || new Date().toISOString(),
-    atualizadoEm: new Date().toISOString(),
-  };
-
-  if (editId) processos = processos.map(p => p.id === editId ? obj : p);
-  else processos.push(obj);
-
-  salvar();
-  closeModal();
-  render();
-  salvarNoSheets(obj);
-}
-
-function editarProcesso(id){ openModal(id); }
-
-function excluirProcesso(id) {
-  if (!confirm('Excluir este processo?')) return;
-  processos = processos.filter(p => p.id !== id);
-  salvar();
-  render();
-  excluirDoSheets(id);
-}
-
-function openDetail(id) {
-  const p = processos.find(x => x.id === id);
-  if (!p) return;
-
-  document.getElementById('detailTitle').textContent = p.processo || 'Processo';
-  document.getElementById('detailEditBtn').dataset.id = id;
-
-  const st = statusCalc(p);
-  const bm = {
-    ok:'<span class="badge badge-ok">Em dia</span>',
-    vencendo:'<span class="badge badge-warn">Vencendo</span>',
-    urgente:'<span class="badge badge-danger">Urgente</span>',
-    vencido:'<span class="badge badge-vencido">Vencido</span>'
-  };
-
-  const canais = [];
-  if (p.alertaEmail) canais.push({cor:'#1A3A2A',label:'E-mail (Gmail)'});
-  if (p.alertaWhatsapp) canais.push({cor:'#1A6B3A',label:'WhatsApp'});
-  if (p.alertaAgenda) canais.push({cor:'#185FA5',label:'Google Agenda (3 eventos)'});
-  if (p.notifCliente) canais.push({cor:'#B87010',label:`Cliente: ${escapeHtml(p.clienteEmail || 'não informado')}`});
-
-  document.getElementById('detailBody').innerHTML = `
-    <div class="detail-section">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;flex-wrap:wrap">
-        ${bm[st]}
-        <span style="font-family:var(--mono);font-size:13px;color:var(--text3)">
-          ${diasRestantes(p.dataLegal) >= 0 ? diasRestantes(p.dataLegal)+' dias restantes' : 'Vencido há '+Math.abs(diasRestantes(p.dataLegal))+' dias'}
-        </span>
-      </div>
-      <div class="detail-field"><div class="detail-field-label">Número do processo</div><div class="detail-field-val" style="font-family:var(--mono)">${escapeHtml(p.processo || '—')}</div></div>
-      <div class="detail-field"><div class="detail-field-label">Cliente</div><div class="detail-field-val">${escapeHtml(p.cliente || '—')}</div></div>
-      <div class="detail-field"><div class="detail-field-label">Advogado responsável</div><div class="detail-field-val">${p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro advogado'}</div></div>
-      ${p.descricao ? `<div class="detail-field"><div class="detail-field-label">Descrição</div><div class="detail-field-val">${escapeHtml(p.descricao)}</div></div>` : ''}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Datas</div>
-      <div class="prazo-card safe"><div class="prazo-card-title">Data segura</div><div class="prazo-card-date">${fmtDate(p.dataSegura)}</div><div class="prazo-card-sub">Sem prorrogação — mais conservadora</div></div>
-      <div class="prazo-card legal"><div class="prazo-card-title">Prazo fatal (legal)</div><div class="prazo-card-date">${fmtDate(p.dataLegal)}</div><div class="prazo-card-sub">Com prorrogação se cair em feriado/fim de semana</div></div>
-      <div style="font-size:12px;color:var(--text3);margin-top:6px">Publicação: ${fmtDate(p.publicacao)} · ${escapeHtml(String(p.dias))} dias úteis · Alerta D-2: ${fmtDate(p.dataAlerta)}</div>
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Canais de alerta</div>
-      ${canais.length === 0 ? '<div style="font-size:13px;color:var(--text3)">Nenhum canal configurado</div>' : canais.map(c => `<div class="alert-channel"><div class="channel-dot" style="background:${c.cor}"></div>${c.label}</div>`).join('')}
-    </div>
-    <div class="detail-section">
-      <div class="detail-section-title">Linha do tempo</div>
-      <div class="timeline">
-        <div class="timeline-item"><div class="timeline-dot" style="background:var(--text3)"></div><div class="timeline-date">${fmtDate(p.publicacao)}</div><div class="timeline-text">Publicação no Diário Oficial</div></div>
-        <div class="timeline-item"><div class="timeline-dot" style="background:var(--warn)"></div><div class="timeline-date">${fmtDate(p.dataAlerta)}</div><div class="timeline-text">Alerta D-2</div></div>
-        <div class="timeline-item"><div class="timeline-dot" style="background:var(--warn)"></div><div class="timeline-date">${fmtDate(p.dataSegura)}</div><div class="timeline-text">Data segura</div></div>
-        <div class="timeline-item"><div class="timeline-dot" style="background:var(--accent2)"></div><div class="timeline-date">${fmtDate(p.dataLegal)}</div><div class="timeline-text">Prazo fatal</div></div>
-      </div>
-    </div>`;
-
-  document.getElementById('detailOverlay').classList.add('open');
-  document.getElementById('detailPanel').classList.add('open');
-}
-
-function closeDetail() {
-  document.getElementById('detailOverlay').classList.remove('open');
-  document.getElementById('detailPanel').classList.remove('open');
-}
-function editarDoDetalhe() {
-  const id = document.getElementById('detailEditBtn').dataset.id;
-  closeDetail();
-  editarProcesso(id);
-}
-
-function exportCSV() {
-  if (processos.length === 0) {
-    alert('Nenhum processo para exportar.');
-    return;
-  }
-  const cols = ['Processo','Cliente','Advogado','Publicação','Dias úteis','Data segura','Prazo fatal','Alerta D-2','Status'];
-  const rows = processos.map(p => [
-    p.processo || '',
-    p.cliente || '',
-    p.advogado === 'luiz' ? 'Luiz Beltrão' : 'Outro',
-    fmtDate(p.publicacao),
-    p.dias,
-    fmtDate(p.dataSegura),
-    fmtDate(p.dataLegal),
-    fmtDate(p.dataAlerta),
-    statusCalc(p)
-  ]);
-  const csv = [cols, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
-  a.download = 'prazos-' + new Date().toISOString().slice(0,10) + '.csv';
-  a.click();
-}
-
-// === DATAJUD ===
-const PROXY_URL = 'https://proxy-datajud.luiz-841.workers.dev/';
-const TRIBUNAIS = {
-  tjmg:{endpoint:'api_publica_tjmg',nome:'TJMG'},
-  trt3:{endpoint:'api_publica_trt3',nome:'TRT-MG (3ª Região)'},
-  jfmg:{endpoint:'api_publica_jfmg',nome:'JFMG'},
-  trf1:{endpoint:'api_publica_trf1',nome:'TRF1'},
-  tjsp:{endpoint:'api_publica_tjsp',nome:'TJSP'},
-  tjrj:{endpoint:'api_publica_tjrj',nome:'TJRJ'},
-  tjpr:{endpoint:'api_publica_tjpr',nome:'TJPR'},
-  trt2:{endpoint:'api_publica_trt2',nome:'TRT-SP (2ª Região)'},
-  trt4:{endpoint:'api_publica_trt4',nome:'TRT-RS (4ª Região)'},
-};
-
-function detectarTribunal(num) {
-  const c = String(num || '').replace(/\D/g,'');
-  if (c.length < 15) return null;
-  const j = c.charAt(13), tt = c.substring(14,16);
-  if (j === '8' && tt === '13') return 'tjmg';
-  if (j === '5' && tt === '03') return 'trt3';
-  if (j === '4' && tt === '01') return 'jfmg';
-  return null;
-}
-
-async function buscarDatajud(endpoint, query) {
-  const r = await fetch(PROXY_URL,{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({endpoint,query})
-  });
-  if (!r.ok) throw new Error(`Erro ${r.status}`);
-  return r.json();
-}
-
-let buscaTipoAtivo = 'processo';
-const buscaConfig = {
-  processo:{placeholder:'Ex: 0000000-00.0000.8.13.0024',hint:'Número do processo no formato CNJ'},
-  oab:{placeholder:'Ex: 129524',hint:'Número da OAB (sem o estado)'},
-  cnpj:{placeholder:'Ex: 00.000.000/0001-00',hint:'CNPJ da parte (com ou sem formatação)'},
-  cpf:{placeholder:'Ex: 000.000.000-00',hint:'CPF da parte (com ou sem formatação)'}
-};
-
-function setBuscaTab(tipo, el) {
-  buscaTipoAtivo = tipo;
-  document.querySelectorAll('.busca-tab').forEach(b => b.classList.remove('active'));
-  el.classList.add('active');
-  const cfg = buscaConfig[tipo];
-  document.getElementById('f_busca').placeholder = cfg.placeholder;
-  document.getElementById('buscaHint').textContent = cfg.hint;
-  document.getElementById('f_busca').value = '';
-  document.getElementById('buscaResultado').style.display = 'none';
-  document.getElementById('buscaResultado').innerHTML = '';
-  document.getElementById('f_oab_uf').style.display = tipo === 'oab' ? 'block' : 'none';
-}
-
-async function buscarProcesso() {
-  const input = document.getElementById('f_busca').value.trim();
-  if (!input) return;
-
-  const el = document.getElementById('buscaResultado');
-  const btn = document.getElementById('btnBuscar');
-  el.style.display = 'block';
-  el.innerHTML = '<div class="busca-loading">Buscando no DataJud/CNJ...</div>';
-  btn.disabled = true;
-  btn.textContent = '...';
-
-  try {
-    let resultados = [];
-    const tp = ['tjmg','trt3'];
-    const ta = ['tjmg','trt3','jfmg','trf1','tjsp','tjrj','tjpr','trt2','trt4'];
-
-    if (buscaTipoAtivo === 'oab') {
-      const n = input.replace(/\D/g,'');
-      const uf = document.getElementById('f_oab_uf').value;
-      for (const t of ta) {
-        const {endpoint,nome} = TRIBUNAIS[t];
-        try {
-          const q = uf
-            ? { bool:{ must:[ {match:{'partes.advogados.OabNumero':n}}, {match:{'partes.advogados.OabEstado':uf}} ] } }
-            : { match:{'partes.advogados.OabNumero':n} };
-          const d = await buscarDatajud(endpoint,{query:q,size:10,_source:true});
-          if (d.hits?.hits?.length) resultados = resultados.concat(d.hits.hits.map(h => ({...h._source,_tribunal:nome})));
-        } catch(e) {}
-      }
-    } else if (buscaTipoAtivo === 'cnpj' || buscaTipoAtivo === 'cpf') {
-      const n = input.replace(/\D/g,'');
-      for (const t of tp) {
-        const {endpoint,nome} = TRIBUNAIS[t];
-        try {
-          const d = await buscarDatajud(endpoint,{query:{match:{'partes.documento':n}},size:20,_source:true});
-          if (d.hits?.hits?.length) resultados = resultados.concat(d.hits.hits.map(h => ({...h._source,_tribunal:nome})));
-        } catch(e) {}
-      }
-    } else {
-      const trib = detectarTribunal(input);
-      if (!trib || !TRIBUNAIS[trib]) {
-        throw new Error('Número de processo inválido, incompleto ou tribunal não mapeado.');
-      }
-      const {endpoint,nome} = TRIBUNAIS[trib];
-      const d = await buscarDatajud(endpoint,{
-        query:{bool:{must:[{match:{numeroProcesso:input.replace(/\D/g,'')}}]}},
-        size:5,
-        _source:true
-      });
-      if (d.hits?.hits?.length) resultados = d.hits.hits.map(h => ({...h._source,_tribunal:nome}));
+      els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
+      els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
+      els.workerUrl.addEventListener("change", persistWorkerUrl);
     }
 
-    if (resultados.length === 0) {
-      el.innerHTML = `<div class="busca-erro">Nenhum processo encontrado.</div>`;
-    } else {
-      renderResultadosBusca(resultados);
+    function persistWorkerUrl() {
+      localStorage.setItem(CONFIG.storageKeyWorkerUrl, els.workerUrl.value.trim());
     }
-  } catch(e) {
-    el.innerHTML = `<div class="busca-erro">Erro ao consultar DataJud: ${escapeHtml(e.message)}</div>`;
-  }
 
-  btn.disabled = false;
-  btn.textContent = 'Buscar';
-}
+    function loadDeadlines() {
+      try {
+        return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
+      } catch {
+        return {};
+      }
+    }
 
-function fmtNum(n) {
-  if (!n || n.length < 20) return n || '—';
-  const d = String(n).replace(/\D/g,'');
-  if (d.length !== 20) return n;
-  return `${d.slice(0,7)}-${d.slice(7,9)}.${d.slice(9,13)}.${d.slice(13,14)}.${d.slice(14,16)}.${d.slice(16)}`;
-}
+    function saveDeadlines() {
+      localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
+      updateDashboard();
+    }
 
-function renderResultadosBusca(lista) {
-  const el = document.getElementById('buscaResultado');
-  el.innerHTML =
-    `<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${lista.length} processo(s) encontrado(s)</div>` +
-    lista.map((p,i) => {
-      const partes = Array.isArray(p.partes) ? p.partes : [];
-      const tem = partes.length > 0;
-      const procFmt = fmtNum(p.numeroProcesso || '');
+    function updateDashboard() {
+      els.resultsCount.textContent = String(state.filteredItems.length || 0);
+      els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
+      els.connStatus.textContent = state.loading ? "Consultando..." : (state.rawItems.length ? "Conectado" : "Aguardando");
+    }
 
-      const ph = tem ? partes.slice(0,6).map(pt => {
-        const tp = escapeHtml(pt.tipoParte || '—');
-        const nm = escapeHtml(pt.nome || '—');
-        return `<div class="busca-parte">
-          <span class="busca-parte-tipo">${tp}</span>
-          <span class="busca-parte-nome">${nm}</span>
-          <button class="busca-parte-sel" onclick="event.stopPropagation();selecionarParte(${i}, '${escapeHtml(pt.nome || '')}')">Selecionar</button>
-        </div>`;
-      }).join('') : '';
+    function setMessage(msg) {
+      els.globalMessage.textContent = msg;
+    }
 
-      return `<div class="busca-card" id="busca-card-${i}" onclick="${!tem ? `selecionarResultadoSemParte(${i})` : ''}">
-        <div class="busca-num">${escapeHtml(procFmt)}</div>
-        <div class="busca-classe">${escapeHtml(p.classe?.nome || '—')}</div>
-        <div class="busca-meta"><span class="busca-tribunal">${escapeHtml(p._tribunal || '')}</span>${escapeHtml(p.orgaoJulgador?.nome || '')}</div>
-        ${tem
-          ? `<div class="busca-partes"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Partes — selecione seu cliente</div>${ph}</div>`
-          : `<div style="font-size:11px;color:var(--text3);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">Clique para usar — preencha o cliente manualmente</div>`
-        }
-      </div>`;
-    }).join('');
+    function setLoading(on) {
+      state.loading = on;
+      els.btnBuscar.disabled = on;
+      els.btnBuscar.innerHTML = on
+        ? '<span class="loader"></span> Consultando...'
+        : 'Buscar publicações';
+      updateDashboard();
+    }
 
-  window.__buscaResultados = lista;
-}
+    function todayStr() {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
 
-function selecionarResultadoSemParte(idx) {
-  const p = window.__buscaResultados?.[idx];
-  if (!p) return;
-  document.getElementById('f_processo').value = fmtNum(p.numeroProcesso || '');
-  document.querySelectorAll('.busca-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById(`busca-card-${idx}`)?.classList.add('selected');
-  document.getElementById('formProcesso').scrollIntoView({behavior:'smooth',block:'start'});
-}
+    function shiftDate(baseStr, deltaDays) {
+      const d = new Date(baseStr + "T12:00:00");
+      d.setDate(d.getDate() + deltaDays);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, "0");
+      const day = String(d.getDate()).padStart(2, "0");
+      return `${y}-${m}-${day}`;
+    }
 
-function selecionarParte(idx, cliente) {
-  const p = window.__buscaResultados?.[idx];
-  if (!p) return;
-  document.getElementById('f_processo').value = fmtNum(p.numeroProcesso || '');
-  document.getElementById('f_cliente').value = cliente || '';
-  document.querySelectorAll('.busca-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById(`busca-card-${idx}`)?.classList.add('selected');
-  document.getElementById('formProcesso').scrollIntoView({behavior:'smooth',block:'start'});
-}
+    function presetToday() {
+      const t = todayStr();
+      els.desde.value = t;
+      els.ate.value = t;
+    }
 
-async function atualizarProcesso(p) {
-  try {
-    const trib = detectarTribunal(p.processo);
-    if (!trib || !TRIBUNAIS[trib]) return {...p, ultimaVerificacao:new Date().toISOString()};
-    const {endpoint} = TRIBUNAIS[trib];
-    const d = await buscarDatajud(endpoint,{
-      query:{bool:{must:[{match:{numeroProcesso:String(p.processo || '').replace(/\D/g,'')}}]}},
-      size:1,
-      _source:true
-    });
-    if (d.hits?.hits?.length) {
-      const n = d.hits.hits[0]._source;
-      return {
-        ...p,
-        tribunal:n.tribunal || p.tribunal,
-        orgaoJulgador:n.orgaoJulgador?.nome || p.orgaoJulgador,
-        classe:n.classe?.nome || p.classe,
-        partes:n.partes?.length ? n.partes : p.partes,
-        ultimaVerificacao:new Date().toISOString()
+    function presetLast7Days() {
+      const t = todayStr();
+      els.ate.value = t;
+      els.desde.value = shiftDate(t, -7);
+    }
+
+    function presetLast30Days() {
+      const t = todayStr();
+      els.ate.value = t;
+      els.desde.value = shiftDate(t, -30);
+    }
+
+    function clearFilters() {
+      presetLast7Days();
+      els.limit.value = "50";
+      els.comTexto.value = "true";
+      els.buscaLivre.value = "";
+      els.somenteComPrazo.value = "todos";
+      renderRows([]);
+      state.rawItems = [];
+      state.filteredItems = [];
+      state.selectedItem = null;
+      renderDetails(null);
+      updateDashboard();
+      setMessage("Filtros limpos.");
+    }
+
+    async function handleBuscar() {
+      const workerUrl = els.workerUrl.value.trim();
+      if (!workerUrl) {
+        setMessage("Informe o endpoint do Worker.");
+        els.workerUrl.focus();
+        return;
+      }
+
+      persistWorkerUrl();
+
+      const payload = {
+        snapAction: CONFIG.actionListarPublicacoes,
+        desde: els.desde.value || undefined,
+        ate: els.ate.value || undefined,
+        limit: Number(els.limit.value || 50),
+        comTexto: els.comTexto.value === "true"
       };
+
+      setLoading(true);
+      setMessage("Consultando publicações via Worker...");
+      renderRows([]);
+
+      try {
+        const res = await fetch(workerUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await safeJson(res);
+
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || `Erro HTTP ${res.status}`);
+        }
+
+        const items = normalizeItems(data);
+        state.rawItems = items;
+        state.selectedItem = null;
+        renderDetails(null);
+        applyLocalFiltersAndRender();
+
+        els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+
+        setMessage(`${items.length} publicação(ões) carregada(s).`);
+      } catch (err) {
+        console.error(err);
+        state.rawItems = [];
+        state.filteredItems = [];
+        renderRows([]);
+        renderDetails(null);
+        setMessage(`Falha na consulta: ${err.message || err}`);
+      } finally {
+        setLoading(false);
+      }
     }
-  } catch(e) {}
-  return {...p, ultimaVerificacao:new Date().toISOString()};
-}
 
-async function atualizarTodos() {
-  if (processos.length === 0) return;
-  const bar = document.getElementById('updateBar');
-  const msg = document.getElementById('updateBarMsg');
-  const prog = document.getElementById('updateProgressBar');
-  const btn = document.getElementById('btnAtualizar');
+    async function safeJson(res) {
+      try {
+        return await res.json();
+      } catch {
+        return {};
+      }
+    }
 
-  bar.style.display = 'flex';
-  btn.disabled = true;
-  btn.textContent = '↻ Atualizando...';
+    function normalizeItems(data) {
+      const arr =
+        data?.items ||
+        data?.publicacoes ||
+        data?.data ||
+        data?.result ||
+        [];
 
-  const total = processos.length;
-  const ats = [];
+      if (!Array.isArray(arr)) return [];
 
-  for (let i = 0; i < total; i++) {
-    msg.textContent = `Verificando ${i + 1} de ${total}: ${processos[i].processo || 'processo'}...`;
-    prog.style.width = `${Math.round(((i + 1) / total) * 100)}%`;
-    ats.push(await atualizarProcesso(processos[i]));
-    await new Promise(r => setTimeout(r, 250));
-  }
+      return arr.map((item, index) => {
+        const id = String(
+          item.idPublicacao ??
+          item.id ??
+          item.codigo ??
+          `idx_${index}`
+        );
 
-  processos = ats;
-  salvar();
-  render();
+        const dataPub =
+          item.dataPublicacao ??
+          item.data ??
+          item.edicao?.data ??
+          item.publicadoEm ??
+          "";
 
-  msg.textContent = `✓ ${total} processo(s) verificado(s) em ${fmtDateHora(new Date().toISOString())}`;
-  prog.style.width = '100%';
-  btn.disabled = false;
-  btn.textContent = '↻ Atualizar';
+        const diario =
+          item.diario ??
+          item.jornal ??
+          item.edicao?.nome ??
+          item.tribunal ??
+          item.origem ??
+          "";
 
-  setTimeout(() => { bar.style.display = 'none'; }, 4000);
-}
+        const processo =
+          item.numeroProcesso ??
+          item.processo ??
+          item.numProcesso ??
+          "";
 
-(async () => {
-  processos = JSON.parse(localStorage.getItem('prazos_processos') || '[]');
-  render();
+        const vara =
+          item.vara ??
+          item.orgaoJulgador ??
+          item.unidade ??
+          "";
 
-  const bar = document.getElementById('updateBar');
-  const msg = document.getElementById('updateBarMsg');
-  bar.style.display = 'flex';
-  msg.textContent = 'Carregando processos do banco de dados...';
-  document.getElementById('updateProgressBar').style.width = '30%';
+        const partes = normalizePartes(item);
+        const texto =
+          item.texto ??
+          item.conteudo ??
+          item.resumo ??
+          "";
 
-  await carregarDoSheets();
-  render();
+        return {
+          _raw: item,
+          id,
+          dataPublicacao: normalizeDateString(dataPub),
+          diario,
+          processo,
+          vara,
+          partes,
+          texto,
+          prazoFinal: state.deadlines[id] || ""
+        };
+      });
+    }
 
-  document.getElementById('updateProgressBar').style.width = '100%';
-  msg.textContent = `✓ ${processos.length} processo(s) carregado(s)`;
-  setTimeout(() => { bar.style.display = 'none'; }, 2000);
-})();
+    function normalizePartes(item) {
+      const candidatos = [
+        item.partes,
+        item.nomePartes,
+        item.polos,
+        item.requerente,
+        item.requerido,
+        item.autor,
+        item.reu
+      ].filter(Boolean);
 
-// === SNAP ===
-const SNAP_WORKER = 'https://proxy-datajud.luiz-841.workers.dev/snap';
+      if (Array.isArray(item.partes)) {
+        return item.partes.map(v => String(v)).join(" • ");
+      }
 
-async function abrirSNAP() {
-  const btn = document.getElementById('btnSNAP');
-  btn.disabled = true;
-  document.getElementById('snapOverlay').classList.add('open');
-  document.getElementById('snapBody').innerHTML = '<div style="text-align:center;padding:2rem;color:var(--text3)">Carregando publicações do Recorte Eletrônico...</div>';
+      if (typeof item.partes === "string") return item.partes;
 
-  try {
-    const r = await fetch(SNAP_WORKER, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ snapAction: 'listar_publicacoes', limite: 20 })
-    });
+      if (candidatos.length) {
+        return candidatos
+          .map(v => Array.isArray(v) ? v.join(" • ") : String(v))
+          .join(" • ");
+      }
 
-    const data = await r.json();
-    if (!r.ok || !data.ok) throw new Error(data.message || 'Erro ao buscar publicações');
+      return "";
+    }
 
-    renderSnapPublicacoes(data.publicacoes || [], data.total || 0);
-  } catch (e) {
-    document.getElementById('snapBody').innerHTML = `<div class="busca-erro">Erro: ${escapeHtml(e.message)}</div>`;
-  } finally {
-    btn.disabled = false;
-  }
-}
+    function normalizeDateString(v) {
+      if (!v) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      const date = new Date(v);
+      if (Number.isNaN(date.getTime())) return String(v);
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, "0");
+      const d = String(date.getDate()).padStart(2, "0");
+      return `${y}-${m}-${d}`;
+    }
 
-function fecharSNAP() {
-  document.getElementById('snapOverlay').classList.remove('open');
-}
+    function formatDateBR(v) {
+      if (!v) return "—";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        const [y,m,d] = v.split("-");
+        return `${d}/${m}/${y}`;
+      }
+      return v;
+    }
 
-function toggleTextoSNAP(id) {
-  const el = document.getElementById(`snap-texto-${id}`);
-  if (!el) return;
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
+    function applyLocalFiltersAndRender() {
+      const q = (els.buscaLivre.value || "").trim().toLowerCase();
+      const mode = els.somenteComPrazo.value;
 
-function renderSnapPublicacoes(lista, total) {
-  const el = document.getElementById('snapBody');
+      let items = [...state.rawItems];
 
-  if (!Array.isArray(lista) || lista.length === 0) {
-    el.innerHTML = '<div style="padding:1rem;color:var(--text3);text-align:center">Nenhuma publicação encontrada.</div>';
-    return;
-  }
+      if (q) {
+        items = items.filter(item => {
+          const blob = [
+            item.id,
+            item.dataPublicacao,
+            item.diario,
+            item.processo,
+            item.vara,
+            item.partes,
+            item.texto
+          ].join(" ").toLowerCase();
 
-  const aviso = total > lista.length
-    ? `<div style="font-size:11px;color:var(--warn);margin-bottom:8px">Mostrando as ${lista.length} publicações mais recentes de ${total} encontradas.</div>`
-    : '';
+          return blob.includes(q);
+        });
+      }
 
-  el.innerHTML =
-    `<div style="font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text3);margin-bottom:8px">${total} publicação(ões) encontrada(s)</div>` +
-    aviso +
-    lista.map((p, idx) => {
-      const id = escapeHtml(String(p.id || idx));
-      const processo = escapeHtml(p.processo || '');
-      const classe = escapeHtml(p.classe || '');
-      const vara = escapeHtml(p.vara || '');
-      const orgao = escapeHtml(p.orgao || '');
-      const jornal = escapeHtml(p.jornal || '');
-      const dataFmt = p.data ? fmtDate(p.data) : '';
-      const conteudo = escapeHtml(p.conteudo || '');
-      const partes = Array.isArray(p.partes) ? p.partes : [];
-      const dataSafe = toSafeJSONString(p);
+      if (mode === "comPrazo") {
+        items = items.filter(item => !!state.deadlines[item.id]);
+      } else if (mode === "semPrazo") {
+        items = items.filter(item => !state.deadlines[item.id]);
+      }
 
-      return `<div class="busca-card" style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
-          <div style="flex:1;min-width:0">
-            ${processo ? `<div class="busca-num">${processo}</div>` : ''}
-            ${classe ? `<div class="busca-classe">${classe}</div>` : ''}
-            <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px">
-              ${dataFmt ? `<span style="font-size:11px;color:var(--text3)">📅 ${dataFmt}</span>` : ''}
-              ${jornal ? `<span style="font-size:11px;color:var(--text3)">📰 ${jornal}</span>` : ''}
-              ${orgao ? `<span style="font-size:11px;color:var(--text3)">🏛 ${orgao}</span>` : ''}
-              ${vara ? `<span style="font-size:11px;color:var(--text3)">⚖ ${vara}</span>` : ''}
+      state.filteredItems = items;
+      renderRows(items);
+      updateDashboard();
+    }
+
+    function renderRows(items) {
+      els.resultsBody.innerHTML = "";
+
+      if (!items.length) {
+        els.emptyState.style.display = "block";
+        return;
+      }
+
+      els.emptyState.style.display = "none";
+
+      const frag = document.createDocumentFragment();
+
+      items.forEach(item => {
+        const tr = document.createElement("tr");
+
+        const prazo = state.deadlines[item.id] || "";
+        const badgeClass = prazo ? "ok" : "warn";
+        const badgeText = prazo ? "Prazo lançado" : "Sem prazo";
+
+        tr.innerHTML = `
+          <td>
+            <div class="cell-title">${formatDateBR(item.dataPublicacao)}</div>
+            <div class="cell-sub mono">ID ${escapeHtml(item.id)}</div>
+          </td>
+
+          <td>
+            <div class="cell-title">${escapeHtml(item.diario || "—")}</div>
+            <div class="cell-sub">${escapeHtml(item._raw?.tribunal || item._raw?.origem || "")}</div>
+          </td>
+
+          <td>
+            <div class="cell-title mono">${escapeHtml(item.processo || "—")}</div>
+            <div class="cell-sub">${escapeHtml(item.vara || "—")}</div>
+          </td>
+
+          <td>
+            <div class="text-preview">${escapeHtml(truncate(item.partes || "—", 220))}</div>
+          </td>
+
+          <td>
+            <div class="text-preview">${escapeHtml(truncate(item.texto || "—", 330))}</div>
+          </td>
+
+          <td>
+            <div style="display:grid; gap:8px;">
+              <span class="badge ${badgeClass}">${badgeText}</span>
+              <input type="date" data-deadline-id="${escapeHtml(item.id)}" value="${escapeHtmlAttr(prazo)}">
             </div>
+          </td>
 
-            ${partes.length ? `
-              <div class="snap-partes">
-                <div style="font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase">Partes</div>
-                ${partes.map(parte => `
-                  <div style="font-size:12px;padding:3px 0">
-                    <span style="color:var(--text3)">${escapeHtml(parte.tipo || 'Parte')}:</span>
-                    <span style="font-weight:500">${escapeHtml(parte.nome || '')}</span>
-                  </div>
-                `).join('')}
-              </div>
-            ` : ''}
-
-            ${conteudo ? `<div class="snap-content-preview" style="margin-top:8px">${conteudo.slice(0, 350)}${conteudo.length > 350 ? '...' : ''}</div>` : ''}
-
-            <div class="snap-actions">
-              <button class="btn btn-outline" style="font-size:11px;padding:5px 10px" onclick="toggleTextoSNAP('${id}')">Ver íntegra</button>
-              <button class="btn" style="font-size:11px;padding:5px 10px;background:var(--accent);color:white;border-color:var(--accent)" onclick="usarPublicacaoSNAP('${dataSafe}')">+ Usar</button>
+          <td>
+            <div class="row-actions">
+              <button class="btn-secondary small-btn" data-detail-id="${escapeHtml(item.id)}">Ver detalhes</button>
+              <button class="btn-ghost small-btn" data-copy-id="${escapeHtml(item.id)}">Copiar texto</button>
             </div>
+          </td>
+        `;
 
-            <div id="snap-texto-${id}" class="snap-full-text" style="display:none">${conteudo || 'Sem conteúdo detalhado disponível.'}</div>
-          </div>
+        frag.appendChild(tr);
+      });
+
+      els.resultsBody.appendChild(frag);
+
+      els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(input => {
+        input.addEventListener("change", (e) => {
+          const id = e.target.getAttribute("data-deadline-id");
+          const value = e.target.value || "";
+          if (value) state.deadlines[id] = value;
+          else delete state.deadlines[id];
+          saveDeadlines();
+
+          state.rawItems = state.rawItems.map(i => i.id === id ? { ...i, prazoFinal: value } : i);
+          applyLocalFiltersAndRender();
+          setMessage(value ? `Prazo salvo para a publicação ${id}.` : `Prazo removido da publicação ${id}.`);
+        });
+      });
+
+      els.resultsBody.querySelectorAll("[data-detail-id]").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.getAttribute("data-detail-id");
+          const item = state.rawItems.find(x => x.id === id);
+          if (!item) return;
+
+          if (!CONFIG.usarEndpointDetalhe) {
+            state.selectedItem = item;
+            renderDetails(item);
+            return;
+          }
+
+          await fetchAndRenderDetail(id, item);
+        });
+      });
+
+      els.resultsBody.querySelectorAll("[data-copy-id]").forEach(btn => {
+        btn.addEventListener("click", async (e) => {
+          const id = e.target.getAttribute("data-copy-id");
+          const item = state.rawItems.find(x => x.id === id);
+          if (!item) return;
+          const text = [
+            `ID: ${item.id}`,
+            `Data: ${formatDateBR(item.dataPublicacao)}`,
+            `Diário/Tribunal: ${item.diario || "—"}`,
+            `Processo: ${item.processo || "—"}`,
+            `Vara: ${item.vara || "—"}`,
+            `Partes: ${item.partes || "—"}`,
+            "",
+            item.texto || ""
+          ].join("\n");
+
+          try {
+            await navigator.clipboard.writeText(text);
+            setMessage(`Texto da publicação ${id} copiado.`);
+          } catch {
+            setMessage("Não foi possível copiar para a área de transferência.");
+          }
+        });
+      });
+    }
+
+    async function fetchAndRenderDetail(id, currentItem) {
+      const workerUrl = els.workerUrl.value.trim();
+      if (!workerUrl) return;
+
+      setMessage(`Buscando detalhes da publicação ${id}...`);
+
+      try {
+        const res = await fetch(workerUrl, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({
+            snapAction: CONFIG.actionDetalharPublicacao,
+            idPublicacao: id,
+            comTexto: true,
+            comEdicao: true
+          })
+        });
+
+        const data = await safeJson(res);
+        if (!res.ok) {
+          throw new Error(data?.message || data?.error || `Erro HTTP ${res.status}`);
+        }
+
+        const detail = normalizeItems({
+          items: [data?.item || data?.publicacao || data]
+        })[0] || currentItem;
+
+        state.selectedItem = detail;
+        renderDetails(detail);
+        setMessage(`Detalhes da publicação ${id} carregados.`);
+      } catch (err) {
+        console.error(err);
+        state.selectedItem = currentItem;
+        renderDetails(currentItem);
+        setMessage(`Falha ao detalhar a publicação ${id}. Exibindo dados já carregados.`);
+      }
+    }
+
+    function renderDetails(item) {
+      if (!item) {
+        els.detailsBox.innerHTML = `<div class="details-empty">Nenhuma publicação selecionada.</div>`;
+        return;
+      }
+
+      const prazo = state.deadlines[item.id] || "—";
+
+      els.detailsBox.innerHTML = `
+        <div class="kv">
+          <div class="key">ID</div>
+          <div class="val mono">${escapeHtml(item.id)}</div>
         </div>
-      </div>`;
-    }).join('');
-}
+        <div class="kv">
+          <div class="key">Data da publicação</div>
+          <div class="val">${escapeHtml(formatDateBR(item.dataPublicacao))}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Diário / Tribunal</div>
+          <div class="val">${escapeHtml(item.diario || "—")}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Processo</div>
+          <div class="val mono">${escapeHtml(item.processo || "—")}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Vara</div>
+          <div class="val">${escapeHtml(item.vara || "—")}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Partes</div>
+          <div class="val">${escapeHtml(item.partes || "—")}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Prazo final</div>
+          <div class="val">${escapeHtml(formatDateBR(prazo))}</div>
+        </div>
+        <div class="kv">
+          <div class="key">Texto</div>
+          <div class="val" style="white-space:pre-wrap;">${escapeHtml(item.texto || "—")}</div>
+        </div>
+      `;
+    }
 
-function usarPublicacaoSNAP(dataEncoded) {
-  const p = fromSafeJSONString(dataEncoded);
-  fecharSNAP();
-  openModal();
+    function exportJson() {
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        total: state.filteredItems.length,
+        itens: state.filteredItems.map(item => ({
+          id: item.id,
+          dataPublicacao: item.dataPublicacao,
+          diario: item.diario,
+          processo: item.processo,
+          vara: item.vara,
+          partes: item.partes,
+          texto: item.texto,
+          prazoFinal: state.deadlines[item.id] || ""
+        }))
+      };
 
-  if (p.processo) document.getElementById('f_processo').value = p.processo;
-  if (p.data) document.getElementById('f_publicacao').value = p.data;
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "publicacoes-snap.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Exportação concluída.");
+    }
 
-  if (Array.isArray(p.partes) && p.partes.length) {
-    const preferencial = p.partes.find(x => /autor|requerente|exequente|impetrante|recorrente/i.test(x.tipo || '')) || p.partes[0];
-    if (preferencial?.nome) document.getElementById('f_cliente').value = preferencial.nome;
-  }
+    function clearAllDeadlines() {
+      if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+      state.deadlines = {};
+      saveDeadlines();
+      applyLocalFiltersAndRender();
+      renderDetails(state.selectedItem);
+      setMessage("Todos os prazos foram apagados.");
+    }
 
-  const descricaoBase = [p.classe, p.vara].filter(Boolean).join(' · ');
-  if (descricaoBase) document.getElementById('f_descricao').value = descricaoBase;
+    function truncate(text, max) {
+      const s = String(text || "");
+      return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+    }
 
-  calcPrazo();
-}
+    function escapeHtml(str) {
+      return String(str ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+    }
 
-</script>
-
-<div class="modal-overlay" id="snapOverlay" onclick="if(event.target===this)fecharSNAP()" style="z-index:300">
-  <div class="modal" style="max-width:760px">
-    <div class="modal-header">
-      <span class="modal-title">📰 Publicações do Recorte Eletrônico</span>
-      <button class="btn-icon" onclick="fecharSNAP()">✕</button>
-    </div>
-    <div class="modal-body" id="snapBody">
-      <div style="text-align:center;padding:2rem;color:var(--text3)">Carregando publicações...</div>
-    </div>
-  </div>
-</div>
-
+    function escapeHtmlAttr(str) {
+      return escapeHtml(str).replaceAll("`", "&#96;");
+    }
+  </script>
 </body>
 </html>
