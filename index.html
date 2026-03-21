@@ -1,1502 +1,737 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tracker de Prazos • SNAP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-
-  <style>
-    :root{
-      --bg:#f7f5f0;
-      --panel:#ffffff;
-      --panel-2:#f1ede4;
-      --line:#ddd7ca;
-      --line-strong:#c6bfb0;
-      --text:#191919;
-      --muted:#6b675f;
-      --accent:#8b1e1e;
-      --accent-2:#b93535;
-      --ok:#1f7a46;
-      --warn:#a66a00;
-      --danger:#a12828;
-      --info:#1a5a8a;
-      --shadow:0 12px 35px rgba(0,0,0,.08);
-      --radius:20px;
-      --radius-sm:14px;
-      --mono:"DM Mono", monospace;
-      --sans:"Syne", system-ui, sans-serif;
-    }
-
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
-    body{min-height:100vh}
-    body.modal-open{overflow:hidden}
-
-    .app{
-      width:min(1480px, calc(100% - 32px));
-      margin:24px auto 40px;
-    }
-
-    .topbar{
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:18px;
-      margin-bottom:18px;
-    }
-
-    .hero, .status-card, .filters, .results, .drawer, .empty{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
-    }
-
-    .hero{
-      padding:28px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      min-height:180px;
-      justify-content:center;
-      background:
-        radial-gradient(circle at top right, rgba(139,30,30,.10), transparent 30%),
-        linear-gradient(180deg, #fff, #fbfaf7);
-    }
-
-    .eyebrow{
-      font-size:12px;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      color:var(--muted);
-    }
-
-    h1{
-      margin:0;
-      font-size:clamp(30px, 4vw, 48px);
-      line-height:1.02;
-      letter-spacing:-.04em;
-    }
-
-    .hero p{
-      margin:0;
-      color:var(--muted);
-      max-width:780px;
-      font-size:15px;
-      line-height:1.6;
-    }
-
-    .status-card{
-      padding:22px;
-      display:grid;
-      gap:14px;
-      align-content:start;
-    }
-
-    .status-grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:12px;
-    }
-
-    .mini{
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:14px;
-      background:linear-gradient(180deg,#fff,#faf8f2);
-    }
-
-    .mini .k{
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      color:var(--muted);
-      margin-bottom:8px;
-    }
-
-    .mini .v{
-      font-size:20px;
-      font-weight:700;
-      letter-spacing:-.03em;
-    }
-
-    .filters{
-      padding:18px;
-      margin-bottom:18px;
-    }
-
-    .filters-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:16px;
-      flex-wrap:wrap;
-    }
-
-    .filters-title{
-      font-size:18px;
-      font-weight:700;
-      letter-spacing:-.03em;
-    }
-
-    .filters-grid{
-      display:grid;
-      grid-template-columns: repeat(6, minmax(0,1fr));
-      gap:12px;
-    }
-
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-    }
-
-    .field.span-2{grid-column:span 2}
-    .field.span-3{grid-column:span 3}
-    .field.span-6{grid-column:span 6}
-
-    label{
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      color:var(--muted);
-    }
-
-    input, select, textarea{
-      width:100%;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--text);
-      border-radius:14px;
-      min-height:46px;
-      padding:12px 14px;
-      font:inherit;
-      outline:none;
-      transition:.18s ease;
-    }
-
-    textarea{
-      min-height:100px;
-      resize:vertical;
-    }
-
-    input:focus, select:focus, textarea:focus{
-      border-color:var(--line-strong);
-      box-shadow:0 0 0 4px rgba(139,30,30,.08);
-    }
-
-    .actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
-    }
-
-    button{
-      border:none;
-      cursor:pointer;
-      border-radius:14px;
-      min-height:46px;
-      padding:0 16px;
-      font-family:var(--sans);
-      font-size:14px;
-      font-weight:700;
-      transition:.18s ease;
-    }
-
-    .btn-primary{
-      background:linear-gradient(180deg,var(--accent-2),var(--accent));
-      color:#fff;
-      box-shadow:0 10px 24px rgba(139,30,30,.22);
-    }
-    .btn-primary:hover{transform:translateY(-1px)}
-    .btn-secondary{
-      background:var(--panel-2);
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-    .btn-ghost{
-      background:#fff;
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-    .btn-danger{
-      background:#fff3f3;
-      color:var(--danger);
-      border:1px solid #efc7c7;
-    }
-
-    .results{
-      overflow:hidden;
-    }
-
-    .results-head{
-      padding:18px;
-      border-bottom:1px solid var(--line);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      background:linear-gradient(180deg,#fff,#fbfaf7);
-    }
-
-    .results-title{
-      font-size:18px;
-      font-weight:700;
-      letter-spacing:-.03em;
-    }
-
-    .table-wrap{
-      overflow:auto;
-    }
-
-    table{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0;
-      min-width:1180px;
-    }
-
-    thead th{
-      position:sticky;
-      top:0;
-      background:#faf8f3;
-      border-bottom:1px solid var(--line);
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      font-size:11px;
-      text-align:left;
-      padding:14px 12px;
-      z-index:2;
-    }
-
-    tbody td{
-      border-bottom:1px solid #efeae0;
-      padding:14px 12px;
-      vertical-align:top;
-      font-size:14px;
-    }
-
-    tbody tr:hover{
-      background:#fcfbf8;
-    }
-
-    tbody tr.sem-efeito{
-      background:#f9f8f6;
-      opacity:.85;
-    }
-    tbody tr.sem-efeito:hover{
-      background:#f3f1ec;
-      opacity:1;
-    }
-
-    .mono{
-      font-family:var(--mono);
-      font-size:12px;
-      line-height:1.5;
-      word-break:break-word;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      border-radius:999px;
-      padding:7px 11px;
-      font-size:11px;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      border:1px solid var(--line);
-      background:#fff;
-      white-space:nowrap;
-    }
-
-    .badge.ok{color:var(--ok); background:#edf8f1; border-color:#cce8d5}
-    .badge.warn{color:var(--warn); background:#fff5e5; border-color:#ecd8ad}
-    .badge.danger{color:var(--danger); background:#fff0f0; border-color:#ebc8c8}
-    .badge.info{color:var(--info); background:#e8f2fa; border-color:#b8d4ea}
-    .badge.muted{color:var(--muted); background:#f5f3ee; border-color:var(--line)}
-
-    .cell-title{
-      font-weight:700;
-      margin-bottom:6px;
-      line-height:1.35;
-    }
-
-    .cell-sub{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
-    }
-
-    .text-preview{
-      max-width:540px;
-      line-height:1.55;
-      color:#272727;
-      white-space:pre-wrap;
-    }
-
-    .row-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-    }
-
-    .small-btn{
-      min-height:36px;
-      padding:0 12px;
-      border-radius:12px;
-      font-size:12px;
-    }
-
-    .layout-bottom{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      margin-top:18px;
-    }
-
-    .drawer{
-      padding:18px;
-    }
-
-    .drawer h2{
-      margin:0 0 12px;
-      font-size:20px;
-      letter-spacing:-.03em;
-    }
-
-    .drawer .muted{
-      color:var(--muted);
-      line-height:1.6;
-      font-size:14px;
-    }
-
-    .details-box{
-      margin-top:14px;
-      border:1px solid var(--line);
-      background:#fcfbf8;
-      border-radius:16px;
-      padding:16px;
-      min-height:220px;
-    }
-
-    .details-empty{
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.6;
-    }
-
-    .kv{
-      display:grid;
-      grid-template-columns:160px 1fr;
-      gap:10px;
-      padding:10px 0;
-      border-bottom:1px dashed #e3ddd1;
-    }
-
-    .kv:last-child{border-bottom:none}
-    .kv .key{
-      color:var(--muted);
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.10em;
-    }
-    .kv .val{
-      line-height:1.6;
-      word-break:break-word;
-    }
-
-    .empty{
-      padding:30px;
-      text-align:center;
-      color:var(--muted);
-      margin-top:18px;
-      display:none;
-    }
-
-    .footer-note{
-      margin-top:12px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.6;
-    }
-
-    .loader{
-      width:18px;
-      height:18px;
-      border-radius:999px;
-      border:2px solid rgba(255,255,255,.35);
-      border-top-color:#fff;
-      display:inline-block;
-      animation:spin .8s linear infinite;
-      vertical-align:middle;
-    }
-
-    .error-banner{
-      background:#fff0f0;
-      border:1px solid #ebc8c8;
-      color:#8b1e1e;
-      padding:12px 14px;
-      border-radius:14px;
-      margin-bottom:14px;
-      display:none;
-      white-space:pre-wrap;
-    }
-
-    .modal-overlay{
-      position:fixed;
-      inset:0;
-      background:rgba(0,0,0,.5);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:9999;
-      padding:24px;
-    }
-
-    .modal-overlay.show{
-      display:flex;
-    }
-
-    .modal-panel{
-      width:min(980px, 96vw);
-      max-height:90vh;
-      overflow:auto;
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:22px;
-      box-shadow:0 30px 80px rgba(0,0,0,.28);
-      padding:22px;
-    }
-
-    .modal-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:14px;
-    }
-
-    .modal-title{
-      font-size:24px;
-      font-weight:700;
-      letter-spacing:-.03em;
-      margin:0;
-    }
-
-    .modal-close{
-      min-height:42px;
-      min-width:42px;
-      padding:0;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--text);
-      font-size:26px;
-      line-height:1;
-      cursor:pointer;
-    }
-
-
-    .deadline-manual-wrap{
-      margin-top:18px;
-      padding:18px;
-      border:1px solid var(--line);
-      border-radius:16px;
-      background:#fcfbf8;
-      display:none;
-    }
-
-    .deadline-manual-wrap.show{
-      display:block;
-    }
-
-    .deadline-manual-title{
-      margin:0 0 14px;
-      font-size:16px;
-      font-weight:700;
-      letter-spacing:-.02em;
-    }
-
-    .deadline-manual-grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:12px;
-    }
-
-    .deadline-manual-grid .field.span-full{
-      grid-column:1 / -1;
-    }
-
-    @keyframes spin{
-      to{transform:rotate(360deg)}
-    }
-
-    @media (max-width: 1100px){
-      .topbar, .layout-bottom{grid-template-columns:1fr}
-      .filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .field.span-2,.field.span-3,.field.span-6{grid-column:span 2}
-    }
-
-    @media (max-width: 680px){
-      .app{width:min(100% - 18px, 100%)}
-      .hero,.status-card,.filters,.results,.drawer,.empty{border-radius:18px}
-      .filters-grid{grid-template-columns:1fr}
-      .field.span-2,.field.span-3,.field.span-6{grid-column:span 1}
-      .status-grid{grid-template-columns:1fr 1fr}
-      .kv{grid-template-columns:1fr}
-      .modal-panel{padding:16px}
-      .modal-title{font-size:20px}
-    }
-  </style>
-</head>
-<body>
-  <div class="app">
-    <div id="fatalError" class="error-banner"></div>
-
-    <section class="topbar">
-      <div class="hero">
-        <div class="eyebrow">Tracker de Prazos • SNAP</div>
-        <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
-        <p>
-          Interface refeita para consultar publicações via Worker, revisar conteúdo,
-          identificar processo, vara, partes e registrar prazo final no próprio painel.
-        </p>
-      </div>
-
-      <div class="status-card">
-        <div class="filters-title">Painel rápido</div>
-        <div class="status-grid">
-          <div class="mini">
-            <div class="k">Conexão</div>
-            <div class="v" id="connStatus">Aguardando</div>
-          </div>
-          <div class="mini">
-            <div class="k">Resultados</div>
-            <div class="v" id="resultsCount">0</div>
-          </div>
-          <div class="mini">
-            <div class="k">Prazos salvos</div>
-            <div class="v" id="savedDeadlinesCount">0</div>
-          </div>
-          <div class="mini">
-            <div class="k">Última busca</div>
-            <div class="v" id="lastFetch">—</div>
-          </div>
-        </div>
-        <div id="globalMessage" class="footer-note">
-          Configure o endpoint do Worker e faça a primeira consulta.
-        </div>
-      </div>
-    </section>
-
-    <section class="filters">
-      <div class="filters-header">
-        <div class="filters-title">Filtros de busca</div>
-        <div class="actions">
-          <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
-          <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
-          <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
-          <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
-          <button class="btn-danger" id="btnLimpar" type="button">Limpar filtros</button>
-        </div>
-      </div>
-
-      <div class="filters-grid">
-        <div class="field">
-          <label for="desde">Desde</label>
-          <input type="text" id="desde" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
-        </div>
-
-        <div class="field">
-          <label for="ate">Até</label>
-          <input type="text" id="ate" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
-        </div>
-
-        <div class="field">
-          <label for="limit">Limite</label>
-          <select id="limit">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="comTexto">Trazer texto</label>
-          <select id="comTexto">
-            <option value="true" selected>Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
-
-        <div class="field span-2">
-          <label for="buscaLivre">Filtro local por termo</label>
-          <input
-            type="text"
-            id="buscaLivre"
-            placeholder="processo, parte, vara, tribunal, trecho do texto..."
-          />
-        </div>
-
-        <div class="field span-2">
-          <label for="somenteComPrazo">Exibição</label>
-          <select id="somenteComPrazo">
-            <option value="todos" selected>Todas as publicações</option>
-            <option value="comPrazo">Somente com prazo salvo</option>
-            <option value="semPrazo">Somente sem prazo salvo</option>
-          </select>
-        </div>
-
-        <div class="field span-6">
-          <label for="workerUrl">Endpoint do Worker</label>
-          <input
-            type="text"
-            id="workerUrl"
-            placeholder="https://seu-worker.seudominio.workers.dev"
-          />
-        </div>
-      </div>
-
-      <div class="footer-note">
-        O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
-      </div>
-    </section>
-
-    <section class="results">
-      <div class="results-head">
-        <div class="results-title">Publicações encontradas</div>
-        <div class="actions">
-          <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
-          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:130px;">Data</th>
-              <th style="width:160px;">Diário / Tribunal</th>
-              <th style="width:210px;">Processo / Vara</th>
-              <th style="width:260px;">Partes / Classe</th>
-              <th>Texto</th>
-              <th style="width:200px;">Prazo</th>
-              <th style="width:180px;">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="resultsBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <div class="empty" id="emptyState">
-      Nenhuma publicação para exibir no momento.
-    </div>
-
-    <section class="layout-bottom">
-      <div class="drawer">
-        <h2>Detalhes da publicação</h2>
-        <div class="muted">
-          Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo em janela frontal.
-        </div>
-        <div class="details-box" id="detailsBox">
-          <div class="details-empty">Os detalhes agora são exibidos em uma janela modal na frente da tela.</div>
-        </div>
-      </div>
-
-      <div class="drawer">
-        <h2>Regras do prazo</h2>
-        <div class="muted">
-          O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
-          O prazo final pode ser lançado manualmente em cada linha.
-        </div>
-        <div class="details-box">
-          <div class="kv">
-            <div class="key">Termo inicial</div>
-            <div class="val">Data da publicação</div>
-          </div>
-          <div class="kv">
-            <div class="key">Persistência</div>
-            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
-          </div>
-          <div class="kv">
-            <div class="key">Segurança</div>
-            <div class="val">Senha da API não fica exposta no front-end.</div>
-          </div>
-          <div class="kv">
-            <div class="key">Busca</div>
-            <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <div id="detailsModal" class="modal-overlay" aria-hidden="true">
-    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
-      <div class="modal-head">
-        <h2 class="modal-title" id="detailsModalTitle">Detalhes da publicação</h2>
-        <div style="display:flex; align-items:center; gap:12px;">
-          <button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>
-          <button class="modal-close" id="btnFecharModal" type="button" aria-label="Fechar">×</button>
-        </div>
-      </div>
-      <div id="detailsModalContent"></div>
-    </div>
-  </div>
-
-  <script>
-    (function () {
-      "use strict";
-
-      window.addEventListener("error", function (event) {
-        var box = document.getElementById("fatalError");
-        if (!box) return;
-        box.style.display = "block";
-        box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
+<script>
+  (function () {
+    "use strict";
+
+    window.addEventListener("error", function (event) {
+      var box = document.getElementById("fatalError");
+      if (!box) return;
+      box.style.display = "block";
+      box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
+    });
+
+    var CONFIG = {
+      defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
+      storageKeyDeadlines: "snap_tracker_deadlines_v2",
+      storageKeyWorkerUrl: "snap_worker_url",
+      actionListarPublicacoes: "listarPublicacoes",
+      actionDetalharPublicacao: "detalharPublicacao",
+      usarEndpointDetalhe: false
+    };
+
+    var state = {
+      rawItems: [],
+      filteredItems: [],
+      selectedItem: null,
+      deadlines: loadDeadlines(),
+      loading: false
+    };
+
+    function $(id) {
+      return document.getElementById(id);
+    }
+
+    var els = {
+      desde: $("desde"),
+      ate: $("ate"),
+      limit: $("limit"),
+      comTexto: $("comTexto"),
+      buscaLivre: $("buscaLivre"),
+      somenteComPrazo: $("somenteComPrazo"),
+      workerUrl: $("workerUrl"),
+      btnBuscar: $("btnBuscar"),
+      btnHoje: $("btnHoje"),
+      btn7dias: $("btn7dias"),
+      btn30dias: $("btn30dias"),
+      btnLimpar: $("btnLimpar"),
+      btnExportarJson: $("btnExportarJson"),
+      btnApagarPrazos: $("btnApagarPrazos"),
+      resultsBody: $("resultsBody"),
+      emptyState: $("emptyState"),
+      detailsBox: $("detailsBox"),
+      connStatus: $("connStatus"),
+      resultsCount: $("resultsCount"),
+      savedDeadlinesCount: $("savedDeadlinesCount"),
+      lastFetch: $("lastFetch"),
+      globalMessage: $("globalMessage"),
+      detailsModal: $("detailsModal"),
+      detailsModalContent: $("detailsModalContent"),
+      btnFecharModal: $("btnFecharModal")
+    };
+
+    init();
+
+    function init() {
+      els.workerUrl.value = CONFIG.defaultWorkerUrl;
+      presetLast7Days();
+      applyDateMask(els.desde);
+      applyDateMask(els.ate);
+      updateDashboard();
+
+      els.btnBuscar.addEventListener("click", handleBuscar);
+      els.btnHoje.addEventListener("click", presetToday);
+      els.btn7dias.addEventListener("click", presetLast7Days);
+      els.btn30dias.addEventListener("click", presetLast30Days);
+      els.btnLimpar.addEventListener("click", clearFilters);
+      els.btnExportarJson.addEventListener("click", exportJson);
+      els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
+
+      els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
+      els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
+      els.workerUrl.addEventListener("change", persistWorkerUrl);
+
+      els.btnFecharModal.addEventListener("click", closeDetailsModal);
+      els.detailsModal.addEventListener("click", function (e) {
+        if (e.target === els.detailsModal) closeDetailsModal();
       });
 
-      var CONFIG = {
-        defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
-        storageKeyDeadlines: "snap_tracker_deadlines_v2",
-        storageKeyWorkerUrl: "snap_worker_url",
-        actionListarPublicacoes: "listarPublicacoes",
-        actionDetalharPublicacao: "detalharPublicacao",
-        usarEndpointDetalhe: false
-      };
-
-      var state = {
-        rawItems: [],
-        filteredItems: [],
-        selectedItem: null,
-        deadlines: loadDeadlines(),
-        loading: false
-      };
-
-      function $(id) {
-        return document.getElementById(id);
-      }
-
-      var els = {
-        desde: $("desde"),
-        ate: $("ate"),
-        limit: $("limit"),
-        comTexto: $("comTexto"),
-        buscaLivre: $("buscaLivre"),
-        somenteComPrazo: $("somenteComPrazo"),
-        workerUrl: $("workerUrl"),
-        btnBuscar: $("btnBuscar"),
-        btnHoje: $("btnHoje"),
-        btn7dias: $("btn7dias"),
-        btn30dias: $("btn30dias"),
-        btnLimpar: $("btnLimpar"),
-        btnExportarJson: $("btnExportarJson"),
-        btnApagarPrazos: $("btnApagarPrazos"),
-        resultsBody: $("resultsBody"),
-        emptyState: $("emptyState"),
-        detailsBox: $("detailsBox"),
-        connStatus: $("connStatus"),
-        resultsCount: $("resultsCount"),
-        savedDeadlinesCount: $("savedDeadlinesCount"),
-        lastFetch: $("lastFetch"),
-        globalMessage: $("globalMessage"),
-        detailsModal: $("detailsModal"),
-        detailsModalContent: $("detailsModalContent"),
-        btnFecharModal: $("btnFecharModal")
-      };
-
-      init();
-
-      function init() {
-        els.workerUrl.value = CONFIG.defaultWorkerUrl;
-        presetLast7Days();
-        applyDateMask(els.desde);
-        applyDateMask(els.ate);
-        updateDashboard();
-
-        els.btnBuscar.addEventListener("click", handleBuscar);
-        els.btnHoje.addEventListener("click", presetToday);
-        els.btn7dias.addEventListener("click", presetLast7Days);
-        els.btn30dias.addEventListener("click", presetLast30Days);
-        els.btnLimpar.addEventListener("click", clearFilters);
-        els.btnExportarJson.addEventListener("click", exportJson);
-        els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
-
-        els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
-        els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
-        els.workerUrl.addEventListener("change", persistWorkerUrl);
-
-        els.btnFecharModal.addEventListener("click", closeDetailsModal);
-        els.detailsModal.addEventListener("click", function (e) {
-          if (e.target === els.detailsModal) closeDetailsModal();
-        });
-
-        document.addEventListener("keydown", function (e) {
-          if (e.key === "Escape" && els.detailsModal.classList.contains("show")) {
-            closeDetailsModal();
-          }
-        });
-
-        document.addEventListener("click", function (e) {
-          var btnCriar = e.target.closest("#btnCriarPrazoPublicacao");
-          if (btnCriar) {
-            toggleManualDeadlineForm(true);
-            return;
-          }
-
-          var btnFecharManual = e.target.closest("#btnFecharPrazoManual");
-          if (btnFecharManual) {
-            toggleManualDeadlineForm(false);
-          }
-        });
-      }
-
-      function persistWorkerUrl() {
-        localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
-      }
-
-      function loadDeadlines() {
-        try {
-          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-        } catch (e) {
-          return {};
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && els.detailsModal.classList.contains("show")) {
+          closeDetailsModal();
         }
+      });
+
+      // Novo listener para botão "Criar Prazo"
+      document.addEventListener("click", function (e) {
+        var btnCriar = e.target.closest("#btnCriarPrazoPublicacao");
+        if (btnCriar) {
+          toggleManualDeadlineForm(true);
+          return;
+        }
+
+        var btnFecharManual = e.target.closest("#btnFecharPrazoManual");
+        if (btnFecharManual) {
+          toggleManualDeadlineForm(false);
+        }
+
+        var btnSalvarPrazo = e.target.closest("#btnSalvarPrazoManual");
+        if (btnSalvarPrazo) {
+          salvarPrazoManual();
+        }
+      });
+    }
+
+    function persistWorkerUrl() {
+      localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
+    }
+
+    function loadDeadlines() {
+      try {
+        return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function saveDeadlines() {
+      localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
+      updateDashboard();
+    }
+
+    function updateDashboard() {
+      els.resultsCount.textContent = String(state.filteredItems.length || 0);
+      els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
+      els.connStatus.textContent = state.loading
+        ? "Consultando..."
+        : (state.rawItems.length ? "Conectado" : "Aguardando");
+    }
+
+    function setMessage(msg) {
+      els.globalMessage.textContent = msg;
+    }
+
+    function setLoading(on) {
+      state.loading = on;
+      els.btnBuscar.disabled = on;
+      els.btnBuscar.innerHTML = on
+        ? '<span class="loader"></span> Consultando...'
+        : "Buscar publicações";
+      updateDashboard();
+    }
+
+    function todayStr() {
+      var d = new Date();
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var day = String(d.getDate()).padStart(2, "0");
+      return day + "/" + m + "/" + y;
+    }
+
+    function shiftDate(baseStr, deltaDays) {
+      var iso = brToIso(baseStr);
+      var d = new Date(iso + "T12:00:00");
+      d.setDate(d.getDate() + deltaDays);
+
+      var y = d.getFullYear();
+      var m = String(d.getMonth() + 1).padStart(2, "0");
+      var day = String(d.getDate()).padStart(2, "0");
+      return day + "/" + m + "/" + y;
+    }
+
+    function presetToday() {
+      var t = todayStr();
+      els.desde.value = t;
+      els.ate.value = t;
+    }
+
+    function presetLast7Days() {
+      var t = todayStr();
+      els.ate.value = t;
+      els.desde.value = shiftDate(t, -7);
+    }
+
+    function presetLast30Days() {
+      var t = todayStr();
+      els.ate.value = t;
+      els.desde.value = shiftDate(t, -30);
+    }
+
+    function clearFilters() {
+      presetLast7Days();
+      els.limit.value = "50";
+      els.comTexto.value = "true";
+      els.buscaLivre.value = "";
+      els.somenteComPrazo.value = "todos";
+      renderRows([]);
+      state.rawItems = [];
+      state.filteredItems = [];
+      state.selectedItem = null;
+      closeDetailsModal();
+      updateDashboard();
+      setMessage("Filtros limpos.");
+    }
+
+    async function handleBuscar() {
+      var workerUrl = (els.workerUrl.value || "").trim();
+
+      if (!workerUrl) {
+        setMessage("Informe o endpoint do Worker.");
+        els.workerUrl.focus();
+        return;
       }
 
-      function saveDeadlines() {
-        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
-        updateDashboard();
-      }
+      persistWorkerUrl();
 
-      function updateDashboard() {
-        els.resultsCount.textContent = String(state.filteredItems.length || 0);
-        els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
-        els.connStatus.textContent = state.loading
-          ? "Consultando..."
-          : (state.rawItems.length ? "Conectado" : "Aguardando");
-      }
+      var desdeIso = brToIso((els.desde.value || "").trim());
+      var ateIso = brToIso((els.ate.value || "").trim());
 
-      function setMessage(msg) {
-        els.globalMessage.textContent = msg;
-      }
+      var payload = {
+        snapAction: CONFIG.actionListarPublicacoes,
+        desde: desdeIso || undefined,
+        ate: ateIso || undefined,
+        limit: Number(els.limit.value || 50),
+        comTexto: els.comTexto.value === "true",
+        comProcesso: true,
+        comPartes: true,
+        comVara: true,
+        comTribunal: true,
+        comOrgaoJulgador: true,
+        comMetadados: true
+      };
 
-      function setLoading(on) {
-        state.loading = on;
-        els.btnBuscar.disabled = on;
-        els.btnBuscar.innerHTML = on
-          ? '<span class="loader"></span> Consultando...'
-          : "Buscar publicações";
-        updateDashboard();
-      }
+      setLoading(true);
+      setMessage("Consultando publicações via Worker...");
+      renderRows([]);
 
-      function todayStr() {
-        var d = new Date();
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, "0");
-        var day = String(d.getDate()).padStart(2, "0");
-        return day + "/" + m + "/" + y;
-      }
+      try {
+        var res = await fetch(workerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
 
-      function shiftDate(baseStr, deltaDays) {
-        var iso = brToIso(baseStr);
-        var d = new Date(iso + "T12:00:00");
-        d.setDate(d.getDate() + deltaDays);
+        var data = await safeJson(res);
 
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, "0");
-        var day = String(d.getDate()).padStart(2, "0");
-        return day + "/" + m + "/" + y;
-      }
+        if (!res.ok) {
+          throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+        }
 
-      function presetToday() {
-        var t = todayStr();
-        els.desde.value = t;
-        els.ate.value = t;
-      }
-
-      function presetLast7Days() {
-        var t = todayStr();
-        els.ate.value = t;
-        els.desde.value = shiftDate(t, -7);
-      }
-
-      function presetLast30Days() {
-        var t = todayStr();
-        els.ate.value = t;
-        els.desde.value = shiftDate(t, -30);
-      }
-
-      function clearFilters() {
-        presetLast7Days();
-        els.limit.value = "50";
-        els.comTexto.value = "true";
-        els.buscaLivre.value = "";
-        els.somenteComPrazo.value = "todos";
-        renderRows([]);
-        state.rawItems = [];
-        state.filteredItems = [];
+        var items = normalizeItems(data);
+        state.rawItems = items;
         state.selectedItem = null;
         closeDetailsModal();
-        updateDashboard();
-        setMessage("Filtros limpos.");
-      }
+        applyLocalFiltersAndRender();
 
-      async function handleBuscar() {
-        var workerUrl = (els.workerUrl.value || "").trim();
-
-        if (!workerUrl) {
-          setMessage("Informe o endpoint do Worker.");
-          els.workerUrl.focus();
-          return;
-        }
-
-        persistWorkerUrl();
-
-        var desdeIso = brToIso((els.desde.value || "").trim());
-        var ateIso = brToIso((els.ate.value || "").trim());
-
-        var payload = {
-          snapAction: CONFIG.actionListarPublicacoes,
-          desde: desdeIso || undefined,
-          ate: ateIso || undefined,
-          limit: Number(els.limit.value || 50),
-          comTexto: els.comTexto.value === "true",
-          comProcesso: true,
-          comPartes: true,
-          comVara: true,
-          comTribunal: true,
-          comOrgaoJulgador: true,
-          comMetadados: true
-        };
-
-        setLoading(true);
-        setMessage("Consultando publicações via Worker...");
-        renderRows([]);
-
-        try {
-          var res = await fetch(workerUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-
-          var data = await safeJson(res);
-
-          if (!res.ok) {
-            throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
-          }
-
-          var items = normalizeItems(data);
-          state.rawItems = items;
-          state.selectedItem = null;
-          closeDetailsModal();
-          applyLocalFiltersAndRender();
-
-          els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit"
-          });
-
-          setMessage(items.length + " publicação(ões) carregada(s).");
-        } catch (err) {
-          console.error(err);
-          state.rawItems = [];
-          state.filteredItems = [];
-          renderRows([]);
-          closeDetailsModal();
-          setMessage("Falha na consulta: " + (err.message || err));
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      async function safeJson(res) {
-        try {
-          return await res.json();
-        } catch (e) {
-          return {};
-        }
-      }
-
-      function normalizeItems(data) {
-        var arr =
-          data && (
-            data.items ||
-            data.publicacoes ||
-            (data.data && (data.data.items || data.data.publicacoes || data.data)) ||
-            (data.result && (data.result.items || data.result.publicacoes || data.result)) ||
-            []
-          );
-
-        if (!Array.isArray(arr)) return [];
-
-        return arr.map(function (item, index) {
-          var id = String(item.id || item.idPublicacao || item.codigo || ("idx_" + index));
-
-          var dataPublicacao  = normalizeDateString(item.dataPublicacao || "");
-          var tribunal        = item.tribunal  || "—";
-          var processo        = item.numeroProcesso || "—";
-          var vara            = item.vara       || "";
-          var classe          = item.classe     || "";
-          var tipoAto         = item.tipoAto    || "";
-          var partes          = item.partes     || "";
-          var advogados       = item.advogados  || "";
-          var texto           = item.texto      || "—";
-          var semEfeito       = item.semEfeitoIntimacao === true;
-          var formato         = item.formato    || "A";
-
-          var diario = tribunal;
-
-          return {
-            _raw: item,
-            id: id,
-            formato: formato,
-            semEfeitoIntimacao: semEfeito,
-            dataPublicacao: dataPublicacao,
-            diario: diario,
-            tribunal: tribunal,
-            processo: processo,
-            vara: vara,
-            classe: classe,
-            tipoAto: tipoAto,
-            partes: partes,
-            advogados: advogados,
-            texto: texto,
-            prazoFinal: state.deadlines[id] || ""
-          };
+        els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit"
         });
+
+        setMessage(items.length + " publicação(ões) carregada(s).");
+      } catch (err) {
+        console.error(err);
+        state.rawItems = [];
+        state.filteredItems = [];
+        renderRows([]);
+        closeDetailsModal();
+        setMessage("Falha na consulta: " + (err.message || err));
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function safeJson(res) {
+      try {
+        return await res.json();
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function normalizeItems(data) {
+      var arr =
+        data && (
+          data.items ||
+          data.publicacoes ||
+          (data.data && (data.data.items || data.data.publicacoes || data.data)) ||
+          (data.result && (data.result.items || data.result.publicacoes || data.result)) ||
+          []
+        );
+
+      if (!Array.isArray(arr)) return [];
+
+      return arr.map(function (item, index) {
+        var id = String(item.id || item.idPublicacao || item.codigo || ("idx_" + index));
+
+        var dataPublicacao  = normalizeDateString(item.dataPublicacao || "");
+        var tribunal        = item.tribunal  || "—";
+        var processo        = item.numeroProcesso || "—";
+        var vara            = item.vara       || "";
+        var classe          = item.classe     || "";
+        var tipoAto         = item.tipoAto    || "";
+        var partes          = item.partes     || "";
+        var advogados       = item.advogados  || "";
+        var texto           = item.textoResumo || item.texto || "—"; // Prioriza textoResumo do worker
+        var semEfeito       = item.semEfeitoIntimacao === true;
+        var formato         = item.formato    || "A";
+
+        var diario = tribunal;
+
+        return {
+          _raw: item,
+          id: id,
+          formato: formato,
+          semEfeitoIntimacao: semEfeito,
+          dataPublicacao: dataPublicacao,
+          diario: diario,
+          tribunal: tribunal,
+          processo: processo,
+          vara: vara,
+          classe: classe,
+          tipoAto: tipoAto,
+          partes: partes,
+          advogados: advogados,
+          texto: texto,
+          prazoFinal: state.deadlines[id] || ""
+        };
+      });
+    }
+
+    function normalizeDateString(v) {
+      if (!v) return "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+        var p = v.split("/");
+        return p[2] + "-" + p[1] + "-" + p[0];
       }
 
-      function normalizeDateString(v) {
-        if (!v) return "";
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      var date = new Date(v);
+      if (Number.isNaN(date.getTime())) return String(v);
 
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
-          var p = v.split("/");
-          return p[2] + "-" + p[1] + "-" + p[0];
+      var y = date.getFullYear();
+      var m = String(date.getMonth() + 1).padStart(2, "0");
+      var d = String(date.getDate()).padStart(2, "0");
+      return y + "-" + m + "-" + d;
+    }
+
+    function formatDateBR(v) {
+      if (!v) return "—";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+        var p = v.split("-");
+        return p[2] + "/" + p[1] + "/" + p[0];
+      }
+      return v;
+    }
+
+    function brToIso(v) {
+      if (!v) return "";
+      var s = String(v).trim();
+
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+        var p = s.split("/");
+        return p[2] + "-" + p[1] + "-" + p[0];
+      }
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+        return s;
+      }
+
+      return "";
+    }
+
+    function applyDateMask(input) {
+      if (!input) return;
+
+      input.addEventListener("input", function (e) {
+        var v = e.target.value.replace(/\D/g, "").slice(0, 8);
+
+        if (v.length >= 5) {
+          e.target.value = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4);
+        } else if (v.length >= 3) {
+          e.target.value = v.slice(0, 2) + "/" + v.slice(2);
+        } else {
+          e.target.value = v;
         }
+      });
 
-        var date = new Date(v);
-        if (Number.isNaN(date.getTime())) return String(v);
-
-        var y = date.getFullYear();
-        var m = String(date.getMonth() + 1).padStart(2, "0");
-        var d = String(date.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + d;
-      }
-
-      function formatDateBR(v) {
-        if (!v) return "—";
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-          var p = v.split("-");
-          return p[2] + "/" + p[1] + "/" + p[0];
-        }
-        return v;
-      }
-
-      function brToIso(v) {
-        if (!v) return "";
-        var s = String(v).trim();
+      input.addEventListener("blur", function (e) {
+        var s = e.target.value.trim();
+        if (!s) return;
 
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-          var p = s.split("/");
-          return p[2] + "-" + p[1] + "-" + p[0];
-        }
-
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-          return s;
-        }
-
-        return "";
-      }
-
-      function applyDateMask(input) {
-        if (!input) return;
-
-        input.addEventListener("input", function (e) {
-          var v = e.target.value.replace(/\D/g, "").slice(0, 8);
-
-          if (v.length >= 5) {
-            e.target.value = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4);
-          } else if (v.length >= 3) {
-            e.target.value = v.slice(0, 2) + "/" + v.slice(2);
-          } else {
-            e.target.value = v;
-          }
-        });
-
-        input.addEventListener("blur", function (e) {
-          var s = e.target.value.trim();
-          if (!s) return;
-
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-            return;
-          }
-
-          var iso = brToIso(s);
-          if (iso) {
-            e.target.value = formatDateBR(iso);
-          }
-        });
-      }
-
-      function applyLocalFiltersAndRender() {
-        var q = (els.buscaLivre.value || "").trim().toLowerCase();
-        var mode = els.somenteComPrazo.value;
-        var items = state.rawItems.slice();
-
-        if (q) {
-          items = items.filter(function (item) {
-            var blob = [
-              item.id,
-              item.dataPublicacao,
-              item.tribunal,
-              item.processo,
-              item.vara,
-              item.classe,
-              item.tipoAto,
-              item.partes,
-              item.advogados,
-              item.texto,
-              JSON.stringify(item._raw || {})
-            ].join(" ").toLowerCase();
-
-            return blob.indexOf(q) >= 0;
-          });
-        }
-
-        if (mode === "comPrazo") {
-          items = items.filter(function (item) { return !!state.deadlines[item.id]; });
-        } else if (mode === "semPrazo") {
-          items = items.filter(function (item) { return !state.deadlines[item.id]; });
-        }
-
-        state.filteredItems = items;
-        renderRows(items);
-        updateDashboard();
-      }
-
-      function renderRows(items) {
-        els.resultsBody.innerHTML = "";
-
-        if (!items.length) {
-          els.emptyState.style.display = "block";
           return;
         }
 
-        els.emptyState.style.display = "none";
+        var iso = brToIso(s);
+        if (iso) {
+          e.target.value = formatDateBR(iso);
+        }
+      });
+    }
 
-        var frag = document.createDocumentFragment();
+    function applyLocalFiltersAndRender() {
+      var q = (els.buscaLivre.value || "").trim().toLowerCase();
+      var mode = els.somenteComPrazo.value;
+      var items = state.rawItems.slice();
 
-        items.forEach(function (item) {
-          var tr = document.createElement("tr");
+      if (q) {
+        items = items.filter(function (item) {
+          var blob = [
+            item.id,
+            item.dataPublicacao,
+            item.tribunal,
+            item.processo,
+            item.vara,
+            item.classe,
+            item.tipoAto,
+            item.partes,
+            item.advogados,
+            item.texto,
+            JSON.stringify(item._raw || {})
+          ].join(" ").toLowerCase();
 
-          if (item.semEfeitoIntimacao) {
-            tr.classList.add("sem-efeito");
-          }
-
-          var prazo = state.deadlines[item.id] || "";
-          var badgeClass = prazo ? "ok" : "warn";
-          var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
-
-          var tipoAtoBadge = "";
-          if (item.semEfeitoIntimacao) {
-            tipoAtoBadge = '<span class="badge muted" style="margin-top:4px;">Sem efeito</span>';
-          } else if (item.tipoAto && item.tipoAto !== "Outro") {
-            var tipoClass = item.tipoAto === "Intimação" ? "info" :
-                            item.tipoAto === "Despacho"  ? "warn" :
-                            item.tipoAto === "Sentença"  ? "danger" :
-                            item.tipoAto === "Decisão"   ? "danger" : "";
-            if (tipoClass) {
-              tipoAtoBadge = '<span class="badge ' + tipoClass + '" style="margin-top:4px;">' + escapeHtml(item.tipoAto) + '</span>';
-            }
-          }
-
-          var varaTexto = item.vara || "";
-          var classeTexto = item.classe || "";
-          var partesTexto = item.partes || "—";
-
-          tr.innerHTML = ''
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div>'
-            + '  <div class="cell-sub mono">ID ' + escapeHtml(item.id) + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(item.tribunal || "—") + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title mono">' + escapeHtml(item.processo || "—") + '</div>'
-            + '  <div class="cell-sub">' + escapeHtml(varaTexto) + '</div>'
-            + (classeTexto ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(classeTexto) + '</div>' : '')
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(truncate(partesTexto, 180)) + '</div>'
-            + (item.advogados ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(truncate(item.advogados, 120)) + '</div>' : '')
-            + '</td>'
-            + '<td>'
-            + '  <div class="text-preview">' + escapeHtml(truncate(item.texto || "—", 330)) + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div style="display:grid; gap:6px;">'
-            + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
-            + tipoAtoBadge
-            + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
-            + '  </div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="row-actions">'
-            + '    <button class="btn-secondary small-btn" data-detail-id="' + escapeHtmlAttr(item.id) + '" type="button">Ver detalhes</button>'
-            + '    <button class="btn-ghost small-btn" data-copy-id="' + escapeHtmlAttr(item.id) + '" type="button">Copiar texto</button>'
-            + '  </div>'
-            + '</td>';
-
-          frag.appendChild(tr);
-        });
-
-        els.resultsBody.appendChild(frag);
-
-        els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
-          input.addEventListener("change", function (e) {
-            var id = e.target.getAttribute("data-deadline-id");
-            var value = e.target.value || "";
-
-            if (value) state.deadlines[id] = value;
-            else delete state.deadlines[id];
-
-            saveDeadlines();
-
-            state.rawItems = state.rawItems.map(function (i) {
-              return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
-            });
-
-            applyLocalFiltersAndRender();
-            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
-          });
-        });
-
-        els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
-          btn.addEventListener("click", function (e) {
-            var id = e.target.getAttribute("data-detail-id");
-            var item = state.rawItems.find(function (x) { return x.id === id; });
-            if (!item) return;
-
-            state.selectedItem = item;
-            renderDetails(item);
-          });
-        });
-
-        els.resultsBody.querySelectorAll("[data-copy-id]").forEach(function (btn) {
-          btn.addEventListener("click", async function (e) {
-            var id = e.target.getAttribute("data-copy-id");
-            var item = state.rawItems.find(function (x) { return x.id === id; });
-            if (!item) return;
-
-            var text = [
-              "ID: " + item.id,
-              "Data: " + formatDateBR(item.dataPublicacao),
-              "Tribunal: " + (item.tribunal || "—"),
-              "Processo: " + (item.processo || "—"),
-              "Vara: " + (item.vara || "—"),
-              "Classe: " + (item.classe || "—"),
-              "Tipo de ato: " + (item.tipoAto || "—"),
-              "Partes: " + (item.partes || "—"),
-              "Advogados: " + (item.advogados || "—"),
-              "Prazo final: " + (state.deadlines[item.id] || "—"),
-              "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
-              "",
-              item.texto || ""
-            ].join("\n");
-
-            try {
-              await navigator.clipboard.writeText(text);
-              setMessage("Texto da publicação " + id + " copiado.");
-            } catch (e2) {
-              setMessage("Não foi possível copiar para a área de transferência.");
-            }
-          });
+          return blob.indexOf(q) >= 0;
         });
       }
 
-      function renderDetails(item) {
-        if (!item) return;
+      if (mode === "comPrazo") {
+        items = items.filter(function (item) { return !!state.deadlines[item.id]; });
+      } else if (mode === "semPrazo") {
+        items = items.filter(function (item) { return !state.deadlines[item.id]; });
+      }
 
-        var prazo = state.deadlines[item.id] || "—";
+      state.filteredItems = items;
+      renderRows(items);
+      updateDashboard();
+    }
 
-        els.detailsModalContent.innerHTML = ''
-          + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
-          + '<div class="kv"><div class="key">Formato</div><div class="val">' + escapeHtml(item.formato || "—") + (item.semEfeitoIntimacao ? ' &nbsp;<span class="badge muted">Sem efeito</span>' : '') + '</div></div>'
-          + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
-          + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Classe</div><div class="val">' + escapeHtml(item.classe || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Tipo de ato</div><div class="val">' + escapeHtml(item.tipoAto || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
-          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>'
+    function renderRows(items) {
+      els.resultsBody.innerHTML = "";
 
-          + '<div id="deadlineManualWrap" class="deadline-manual-wrap">'
-          + '  <h3 class="deadline-manual-title">Definir prazo manualmente</h3>'
-          + '  <div class="deadline-manual-grid">'
-          + '    <div class="field">'
-          + '      <label for="prazoInicialManual">Prazo Inicial</label>'
-          + '      <input type="text" id="prazoInicialManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
-          + '    </div>'
-          + '    <div class="field">'
-          + '      <label for="prazoSeguroManual">Prazo Seguro</label>'
-          + '      <input type="text" id="prazoSeguroManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
-          + '    </div>'
-          + '    <div class="field">'
-          + '      <label for="prazoFatalManual">Prazo Fatal</label>'
-          + '      <input type="text" id="prazoFatalManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
-          + '    </div>'
-          + '    <div class="field span-full">'
-          + '      <label for="tarefaPrazoManual">Tarefa</label>'
-          + '      <textarea id="tarefaPrazoManual" placeholder="Descreva a tarefa vinculada a este prazo."></textarea>'
-          + '    </div>'
+      if (!items.length) {
+        els.emptyState.style.display = "block";
+        return;
+      }
+
+      els.emptyState.style.display = "none";
+
+      var frag = document.createDocumentFragment();
+
+      items.forEach(function (item) {
+        var tr = document.createElement("tr");
+
+        if (item.semEfeitoIntimacao) {
+          tr.classList.add("sem-efeito");
+        }
+
+        var prazo = state.deadlines[item.id] || "";
+        var badgeClass = prazo ? "ok" : "warn";
+        var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
+
+        var tipoAtoBadge = "";
+        if (item.semEfeitoIntimacao) {
+          tipoAtoBadge = '<span class="badge muted" style="margin-top:4px;">Sem efeito</span>';
+        } else if (item.tipoAto && item.tipoAto !== "Outro") {
+          var tipoClass = item.tipoAto === "Intimação" ? "info" :
+                          item.tipoAto === "Despacho"  ? "warn" :
+                          item.tipoAto === "Decisão"   ? "danger" : "";
+          if (tipoClass) {
+            tipoAtoBadge = '<span class="badge ' + tipoClass + '" style="margin-top:4px;">' + escapeHtml(item.tipoAto) + '</span>';
+          }
+        }
+
+        var varaTexto = item.vara || "";
+        var classeTexto = item.classe || "";
+        var partesTexto = item.partes || "—";
+
+        tr.innerHTML = ''
+          + '<td>'
+          + '  <div class="cell-title">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div>'
+          + '  <div class="cell-sub mono">ID ' + escapeHtml(item.id) + '</div>'
+          + '</td>'
+          + '<td>'
+          + '  <div class="cell-title">' + escapeHtml(item.tribunal || "—") + '</div>'
+          + '</td>'
+          + '<td>'
+          + '  <div class="cell-title mono">' + escapeHtml(item.processo || "—") + '</div>'
+          + '  <div class="cell-sub">' + escapeHtml(varaTexto) + '</div>'
+          + (classeTexto ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(classeTexto) + '</div>' : '')
+          + '</td>'
+          + '<td>'
+          + '  <div class="cell-title">' + escapeHtml(truncate(partesTexto, 180)) + '</div>'
+          + (item.advogados ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(truncate(item.advogados, 120)) + '</div>' : '')
+          + '</td>'
+          + '<td>'
+          + '  <div class="text-preview">' + escapeHtml(truncate(item.textoResumo || item.texto || "—", 330)) + '</div>'
+          + '</td>'
+          + '<td>'
+          + '  <div style="display:grid; gap:6px;">'
+          + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
+          + tipoAtoBadge
+          + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
           + '  </div>'
-          + '  <div style="margin-top:14px; display:flex; justify-content:flex-end;">'
-          + '    <button type="button" id="btnFecharPrazoManual" class="btn-secondary">Fechar</button>'
+          + '</td>'
+          + '<td>'
+          + '  <div class="row-actions">'
+          + '    <button class="btn-secondary small-btn" data-detail-id="' + escapeHtmlAttr(item.id) + '" type="button">Ver detalhes</button>'
+          + '    <button class="btn-ghost small-btn" data-copy-id="' + escapeHtmlAttr(item.id) + '" type="button">Copiar texto</button>'
           + '  </div>'
-          + '</div>';
+          + '</td>';
 
-        openDetailsModal();
-      }
+        frag.appendChild(tr);
+      });
 
-      function toggleManualDeadlineForm(show) {
-        var wrap = document.getElementById("deadlineManualWrap");
-        if (!wrap) return;
+      els.resultsBody.appendChild(frag);
 
-        if (show) {
-          wrap.classList.add("show");
+      // Eventos dos inputs de prazo
+      els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
+        input.addEventListener("change", function (e) {
+          var id = e.target.getAttribute("data-deadline-id");
+          var value = e.target.value || "";
 
-          var prazoInicialInput = document.getElementById("prazoInicialManual");
-          var prazoSeguroInput = document.getElementById("prazoSeguroManual");
-          var prazoFatalInput = document.getElementById("prazoFatalManual");
+          if (value) state.deadlines[id] = value;
+          else delete state.deadlines[id];
 
-          if (prazoInicialInput) {
-            applyDateMask(prazoInicialInput);
-            if (!prazoInicialInput.value && state.selectedItem && state.selectedItem.dataPublicacao) {
-              prazoInicialInput.value = getNextBusinessDayBR(state.selectedItem.dataPublicacao);
-            }
-          }
+          saveDeadlines();
 
-          if (prazoSeguroInput) applyDateMask(prazoSeguroInput);
-          if (prazoFatalInput) applyDateMask(prazoFatalInput);
-        } else {
-          wrap.classList.remove("show");
-        }
-      }
+          state.rawItems = state.rawItems.map(function (i) {
+            return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
+          });
 
-      function getNextBusinessDayBR(isoDate) {
-        if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "";
-
-        var d = new Date(isoDate + "T12:00:00");
-        d.setDate(d.getDate() + 1);
-
-        while (d.getDay() === 0 || d.getDay() === 6) {
-          d.setDate(d.getDate() + 1);
-        }
-
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, "0");
-        var day = String(d.getDate()).padStart(2, "0");
-        return day + "/" + m + "/" + y;
-      }
-
-      function openDetailsModal() {
-        els.detailsModal.classList.add("show");
-        els.detailsModal.setAttribute("aria-hidden", "false");
-        document.body.classList.add("modal-open");
-      }
-
-      function closeDetailsModal() {
-        els.detailsModal.classList.remove("show");
-        els.detailsModal.setAttribute("aria-hidden", "true");
-        els.detailsModalContent.innerHTML = "";
-        document.body.classList.remove("modal-open");
-      }
-
-      function exportJson() {
-        var payload = {
-          exportedAt: new Date().toISOString(),
-          total: state.filteredItems.length,
-          itens: state.filteredItems.map(function (item) {
-            return {
-              id: item.id,
-              formato: item.formato,
-              semEfeitoIntimacao: item.semEfeitoIntimacao,
-              dataPublicacao: item.dataPublicacao,
-              tribunal: item.tribunal,
-              processo: item.processo,
-              vara: item.vara,
-              classe: item.classe,
-              tipoAto: item.tipoAto,
-              partes: item.partes,
-              advogados: item.advogados,
-              texto: item.texto,
-              prazoFinal: state.deadlines[item.id] || "",
-              raw: item._raw || {}
-            };
-          })
-        };
-
-        var blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json;charset=utf-8"
+          applyLocalFiltersAndRender();
+          setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
         });
+      });
 
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = "publicacoes-snap.json";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        setMessage("Exportação concluída.");
-      }
+      // Botão Ver detalhes
+      els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
+        btn.addEventListener("click", function (e) {
+          var id = e.target.getAttribute("data-detail-id");
+          var item = state.rawItems.find(function (x) { return x.id === id; });
+          if (!item) return;
 
-      function clearAllDeadlines() {
-        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
-        state.deadlines = {};
-        saveDeadlines();
-        applyLocalFiltersAndRender();
-        if (state.selectedItem) {
-          renderDetails(state.selectedItem);
-        } else {
-          closeDetailsModal();
+          state.selectedItem = item;
+          renderDetails(item);
+        });
+      });
+
+      // Copiar texto
+      els.resultsBody.querySelectorAll("[data-copy-id]").forEach(function (btn) {
+        btn.addEventListener("click", async function (e) {
+          var id = e.target.getAttribute("data-copy-id");
+          var item = state.rawItems.find(function (x) { return x.id === id; });
+          if (!item) return;
+
+          var text = [
+            "ID: " + item.id,
+            "Data: " + formatDateBR(item.dataPublicacao),
+            "Tribunal: " + (item.tribunal || "—"),
+            "Processo: " + (item.processo || "—"),
+            "Vara: " + (item.vara || "—"),
+            "Classe: " + (item.classe || "—"),
+            "Tipo de ato: " + (item.tipoAto || "—"),
+            "Partes: " + (item.partes || "—"),
+            "Advogados: " + (item.advogados || "—"),
+            "Prazo final: " + (state.deadlines[item.id] || "—"),
+            "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
+            "",
+            item.textoResumo || item.texto || ""
+          ].join("\n");
+
+          try {
+            await navigator.clipboard.writeText(text);
+            setMessage("Texto da publicação " + id + " copiado.");
+          } catch (e2) {
+            setMessage("Não foi possível copiar para a área de transferência.");
+          }
+        });
+      });
+    }
+
+    function renderDetails(item) {
+      if (!item) return;
+
+      var prazo = state.deadlines[item.id] || "—";
+
+      els.detailsModalContent.innerHTML = ''
+        + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
+        + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
+        + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Tipo de ato</div><div class="val">' + escapeHtml(item.tipoAto || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
+        + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
+        + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.textoResumo || item.texto || "—") + '</div></div>'
+        + '<div style="margin-top:24px; display:flex; justify-content:flex-end; gap:12px;">'
+        + '  <button type="button" id="btnFecharModal" class="btn-secondary">Fechar</button>'
+        + '  <button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>'
+        + '</div>';
+
+      openDetailsModal();
+    }
+
+    function openDetailsModal() {
+      els.detailsModal.classList.add("show");
+      els.detailsModal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function closeDetailsModal() {
+      els.detailsModal.classList.remove("show");
+      els.detailsModal.setAttribute("aria-hidden", "true");
+      els.detailsModalContent.innerHTML = "";
+      document.body.classList.remove("modal-open");
+    }
+
+    function toggleManualDeadlineForm(show) {
+      var wrap = document.getElementById("deadlineManualWrap");
+      if (!wrap) return;
+
+      if (show) {
+        wrap.classList.add("show");
+        // Preenche o prazo inicial com a data da publicação
+        var inicialInput = document.getElementById("prazoInicialManual");
+        if (state.selectedItem && state.selectedItem.dataPublicacao) {
+          inicialInput.value = state.selectedItem.dataPublicacao; // formato YYYY-MM-DD
         }
-        setMessage("Todos os prazos foram apagados.");
+      } else {
+        wrap.classList.remove("show");
+      }
+    }
+
+    function salvarPrazoManual() {
+      if (!state.selectedItem) return;
+
+      var id = state.selectedItem.id;
+      var inicial = document.getElementById("prazoInicialManual").value;
+      var seguro = document.getElementById("prazoSeguroManual").value;
+      var fatal = document.getElementById("prazoFatalManual").value;
+      var tarefa = document.getElementById("tarefaPrazoManual").value.trim();
+
+      if (!fatal) {
+        alert("O Prazo Fatal é obrigatório.");
+        return;
       }
 
-      function truncate(text, max) {
-        var s = String(text || "");
-        return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
-      }
+      // Salva o prazo fatal como principal (o front já usa prazoFinal)
+      state.deadlines[id] = fatal;
 
-      function escapeHtml(str) {
-        return String(str == null ? "" : str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
-      }
+      // Salva detalhes extras (opcional)
+      state.deadlines[id + "_detalhes"] = {
+        inicial: inicial || state.selectedItem.dataPublicacao,
+        seguro: seguro || "",
+        fatal: fatal,
+        tarefa: tarefa || "Prazo manual para publicação " + id
+      };
 
-      function escapeHtmlAttr(str) {
-        return escapeHtml(str).replace(/`/g, "&#96;");
+      saveDeadlines();
+
+      // Atualiza a tabela e o modal
+      applyLocalFiltersAndRender();
+      renderDetails(state.selectedItem);
+
+      toggleManualDeadlineForm(false);
+      setMessage("Prazo manual salvo para publicação " + id + ".");
+    }
+
+    function exportJson() {
+      var payload = {
+        exportedAt: new Date().toISOString(),
+        total: state.filteredItems.length,
+        itens: state.filteredItems.map(function (item) {
+          return {
+            id: item.id,
+            dataPublicacao: item.dataPublicacao,
+            tribunal: item.tribunal,
+            processo: item.processo,
+            vara: item.vara,
+            tipoAto: item.tipoAto,
+            partes: item.partes,
+            advogados: item.advogados,
+            texto: item.textoResumo || item.texto || "",
+            prazoFinal: state.deadlines[item.id] || "",
+            prazoDetalhes: state.deadlines[item.id + "_detalhes"] || null,
+            raw: item._raw || {}
+          };
+        })
+      };
+
+      var blob = new Blob([JSON.stringify(payload, null, 2)], {
+        type: "application/json;charset=utf-8"
+      });
+
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = "publicacoes-snap.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setMessage("Exportação concluída.");
+    }
+
+    function clearAllDeadlines() {
+      if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+      state.deadlines = {};
+      saveDeadlines();
+      applyLocalFiltersAndRender();
+      if (state.selectedItem) {
+        renderDetails(state.selectedItem);
+      } else {
+        closeDetailsModal();
       }
-    })();
-  </script>
-</body>
-</html>
+      setMessage("Todos os prazos foram apagados.");
+    }
+
+    function truncate(text, max) {
+      var s = String(text || "");
+      return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+    }
+
+    function escapeHtml(str) {
+      return String(str == null ? "" : str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function escapeHtmlAttr(str) {
+      return escapeHtml(str).replace(/`/g, "&#96;");
+    }
+  })();
+</script>
