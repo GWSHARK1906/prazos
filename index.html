@@ -581,12 +581,12 @@
       <div class="filters-grid">
         <div class="field">
           <label for="desde">Desde</label>
-          <input type="text" id="desde" placeholder="DD/MM/YYYY" />
+          <input type="text" id="desde" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
         </div>
 
         <div class="field">
           <label for="ate">Até</label>
-          <input type="text" id="ate" placeholder="DD/MM/YYYY" />
+          <input type="text" id="ate" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
         </div>
 
         <div class="field">
@@ -785,6 +785,8 @@
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
         presetLast7Days();
+        applyDateMask(els.desde);
+        applyDateMask(els.ate);
         updateDashboard();
 
         els.btnBuscar.addEventListener("click", handleBuscar);
@@ -854,16 +856,18 @@
         var y = d.getFullYear();
         var m = String(d.getMonth() + 1).padStart(2, "0");
         var day = String(d.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + day;
+        return day + "/" + m + "/" + y;
       }
 
       function shiftDate(baseStr, deltaDays) {
-        var d = new Date(baseStr + "T12:00:00");
+        var iso = brToIso(baseStr);
+        var d = new Date(iso + "T12:00:00");
         d.setDate(d.getDate() + deltaDays);
+
         var y = d.getFullYear();
         var m = String(d.getMonth() + 1).padStart(2, "0");
         var day = String(d.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + day;
+        return day + "/" + m + "/" + y;
       }
 
       function presetToday() {
@@ -910,10 +914,13 @@
 
         persistWorkerUrl();
 
+        var desdeIso = brToIso((els.desde.value || "").trim());
+        var ateIso = brToIso((els.ate.value || "").trim());
+
         var payload = {
           snapAction: CONFIG.actionListarPublicacoes,
-          desde: els.desde.value || undefined,
-          ate: els.ate.value || undefined,
+          desde: desdeIso || undefined,
+          ate: ateIso || undefined,
           limit: Number(els.limit.value || 50),
           comTexto: els.comTexto.value === "true",
           comProcesso: true,
@@ -1047,6 +1054,52 @@
           return p[2] + "/" + p[1] + "/" + p[0];
         }
         return v;
+      }
+
+      function brToIso(v) {
+        if (!v) return "";
+        var s = String(v).trim();
+
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+          var p = s.split("/");
+          return p[2] + "-" + p[1] + "-" + p[0];
+        }
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          return s;
+        }
+
+        return "";
+      }
+
+      function applyDateMask(input) {
+        if (!input) return;
+
+        input.addEventListener("input", function (e) {
+          var v = e.target.value.replace(/\D/g, "").slice(0, 8);
+
+          if (v.length >= 5) {
+            e.target.value = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4);
+          } else if (v.length >= 3) {
+            e.target.value = v.slice(0, 2) + "/" + v.slice(2);
+          } else {
+            e.target.value = v;
+          }
+        });
+
+        input.addEventListener("blur", function (e) {
+          var s = e.target.value.trim();
+          if (!s) return;
+
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+            return;
+          }
+
+          var iso = brToIso(s);
+          if (iso) {
+            e.target.value = formatDateBR(iso);
+          }
+        });
       }
 
       function applyLocalFiltersAndRender() {
