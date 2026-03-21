@@ -4,1247 +4,915 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tracker de Prazos • SNAP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 
   <style>
-    :root{
-      --bg:#f7f5f0;
-      --panel:#ffffff;
-      --panel-2:#f1ede4;
-      --line:#ddd7ca;
-      --line-strong:#c6bfb0;
-      --text:#191919;
-      --muted:#6b675f;
-      --accent:#8b1e1e;
-      --accent-2:#b93535;
-      --ok:#1f7a46;
-      --warn:#a66a00;
-      --danger:#a12828;
-      --info:#1a5a8a;
-      --shadow:0 12px 35px rgba(0,0,0,.08);
-      --radius:20px;
-      --radius-sm:14px;
-      --mono:"DM Mono", monospace;
-      --sans:"Syne", system-ui, sans-serif;
+    :root {
+      --bg: #f7f5f0;
+      --surface: #ffffff;
+      --surface-2: #f2eee7;
+      --border: #e2ddd4;
+      --border-2: #d1cabf;
+      --text: #1d1b18;
+      --text-2: #615b54;
+      --text-3: #8d877f;
+      --accent: #173a2e;
+      --accent-soft: #e8f0ec;
+      --danger: #c8472a;
+      --danger-soft: #faede9;
+      --warning: #b87a19;
+      --warning-soft: #fbf3e2;
+      --shadow: 0 14px 42px rgba(35, 29, 22, 0.08);
+      --radius-xl: 22px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
     }
 
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
-    body{min-height:100vh}
-
-    .app{
-      width:min(1480px, calc(100% - 32px));
-      margin:24px auto 40px;
+    * {
+      box-sizing: border-box;
     }
 
-    .topbar{
-      display:grid;
-      grid-template-columns: 1.1fr .9fr;
-      gap:18px;
-      margin-bottom:18px;
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Syne", sans-serif;
     }
 
-    .hero, .status-card, .filters, .results, .drawer, .empty{
-      background:var(--panel);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      box-shadow:var(--shadow);
+    body.modal-open {
+      overflow: hidden;
     }
 
-    .hero{
-      padding:28px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      min-height:180px;
-      justify-content:center;
-      background:
-        radial-gradient(circle at top right, rgba(139,30,30,.10), transparent 30%),
-        linear-gradient(180deg, #fff, #fbfaf7);
+    .page {
+      max-width: 1220px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
     }
 
-    .eyebrow{
-      font-size:12px;
-      letter-spacing:.16em;
-      text-transform:uppercase;
-      color:var(--muted);
+    .hero {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 22px;
     }
 
-    h1{
-      margin:0;
-      font-size:clamp(30px, 4vw, 48px);
-      line-height:1.02;
-      letter-spacing:-.04em;
+    .hero-title {
+      margin: 0;
+      font-size: clamp(28px, 4vw, 44px);
+      line-height: 1.02;
+      letter-spacing: -0.03em;
     }
 
-    .hero p{
-      margin:0;
-      color:var(--muted);
-      max-width:780px;
-      font-size:15px;
-      line-height:1.6;
+    .hero-subtitle {
+      margin: 8px 0 0;
+      color: var(--text-2);
+      font-size: 15px;
+      line-height: 1.5;
+      max-width: 780px;
     }
 
-    .status-card{
-      padding:22px;
-      display:grid;
-      gap:14px;
-      align-content:start;
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      box-shadow: var(--shadow);
     }
 
-    .status-grid{
-      display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
-      gap:12px;
+    .panel {
+      padding: 22px;
+      margin-bottom: 18px;
     }
 
-    .mini{
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:14px;
-      background:linear-gradient(180deg,#fff,#faf8f2);
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr 1fr auto;
+      gap: 14px;
+      align-items: end;
     }
 
-    .mini .k{
-      font-size:11px;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      color:var(--muted);
-      margin-bottom:8px;
+    @media (max-width: 980px) {
+      .form-grid {
+        grid-template-columns: 1fr 1fr;
+      }
     }
 
-    .mini .v{
-      font-size:20px;
-      font-weight:700;
-      letter-spacing:-.03em;
+    @media (max-width: 640px) {
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .filters{
-      padding:18px;
-      margin-bottom:18px;
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
     }
 
-    .filters-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:16px;
-      flex-wrap:wrap;
+    .field label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-2);
     }
 
-    .filters-title{
-      font-size:18px;
-      font-weight:700;
-      letter-spacing:-.03em;
+    .input, .select {
+      width: 100%;
+      height: 50px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: #fff;
+      padding: 0 14px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
 
-    .filters-grid{
-      display:grid;
-      grid-template-columns: repeat(6, minmax(0,1fr));
-      gap:12px;
+    .input:focus, .select:focus {
+      border-color: #aab8b1;
+      box-shadow: 0 0 0 4px rgba(23, 58, 46, 0.08);
     }
 
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap:8px;
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .field.span-2{grid-column:span 2}
-    .field.span-3{grid-column:span 3}
-    .field.span-6{grid-column:span 6}
-
-    label{
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      color:var(--muted);
+    .btn {
+      height: 50px;
+      border: 0;
+      border-radius: 14px;
+      padding: 0 18px;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.04s ease, opacity 0.18s ease, box-shadow 0.18s ease;
     }
 
-    input, select, textarea{
-      width:100%;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--text);
-      border-radius:14px;
-      min-height:46px;
-      padding:12px 14px;
-      font:inherit;
-      outline:none;
-      transition:.18s ease;
+    .btn:active {
+      transform: translateY(1px);
     }
 
-    textarea{
-      min-height:100px;
-      resize:vertical;
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 10px 24px rgba(23, 58, 46, 0.16);
     }
 
-    input:focus, select:focus, textarea:focus{
-      border-color:var(--line-strong);
-      box-shadow:0 0 0 4px rgba(139,30,30,.08);
+    .btn-secondary {
+      background: var(--surface-2);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
-    .actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:10px;
-      align-items:center;
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
     }
 
-    button{
-      border:none;
-      cursor:pointer;
-      border-radius:14px;
-      min-height:46px;
-      padding:0 16px;
-      font-family:var(--sans);
-      font-size:14px;
-      font-weight:700;
-      transition:.18s ease;
+    .status {
+      font-size: 14px;
+      color: var(--text-2);
     }
 
-    .btn-primary{
-      background:linear-gradient(180deg,var(--accent-2),var(--accent));
-      color:#fff;
-      box-shadow:0 10px 24px rgba(139,30,30,.22);
-    }
-    .btn-primary:hover{transform:translateY(-1px)}
-    .btn-secondary{
-      background:var(--panel-2);
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-    .btn-ghost{
-      background:#fff;
-      color:var(--text);
-      border:1px solid var(--line);
-    }
-    .btn-danger{
-      background:#fff3f3;
-      color:var(--danger);
-      border:1px solid #efc7c7;
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      border: 1px solid transparent;
     }
 
-    .results{
-      overflow:hidden;
+    .badge-ok {
+      background: var(--accent-soft);
+      color: var(--accent);
+      border-color: #d8e7df;
     }
 
-    .results-head{
-      padding:18px;
-      border-bottom:1px solid var(--line);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      flex-wrap:wrap;
-      background:linear-gradient(180deg,#fff,#fbfaf7);
+    .badge-warning {
+      background: var(--warning-soft);
+      color: #7d560f;
+      border-color: #eedfb9;
     }
 
-    .results-title{
-      font-size:18px;
-      font-weight:700;
-      letter-spacing:-.03em;
+    .badge-danger {
+      background: var(--danger-soft);
+      color: #9a2f1b;
+      border-color: #f0d1ca;
     }
 
-    .table-wrap{
-      overflow:auto;
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: #fff;
     }
 
-    table{
-      width:100%;
-      border-collapse:separate;
-      border-spacing:0;
-      min-width:1180px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 1100px;
     }
 
-    thead th{
-      position:sticky;
-      top:0;
-      background:#faf8f3;
-      border-bottom:1px solid var(--line);
-      color:var(--muted);
-      text-transform:uppercase;
-      letter-spacing:.12em;
-      font-size:11px;
-      text-align:left;
-      padding:14px 12px;
-      z-index:2;
+    thead th {
+      text-align: left;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-2);
+      background: #faf8f4;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
     }
 
-    tbody td{
-      border-bottom:1px solid #efeae0;
-      padding:14px 12px;
-      vertical-align:top;
-      font-size:14px;
+    tbody td {
+      padding: 16px;
+      border-bottom: 1px solid #efe9df;
+      vertical-align: top;
+      font-size: 14px;
+      line-height: 1.45;
     }
 
-    tbody tr:hover{
-      background:#fcfbf8;
+    tbody tr:hover {
+      background: #fcfbf8;
     }
 
-    /* linha sem efeito de intimação: fundo levemente acinzentado */
-    tbody tr.sem-efeito{
-      background:#f9f8f6;
-      opacity:.85;
-    }
-    tbody tr.sem-efeito:hover{
-      background:#f3f1ec;
-      opacity:1;
+    .mono {
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
     }
 
-    .mono{
-      font-family:var(--mono);
-      font-size:12px;
-      line-height:1.5;
-      word-break:break-word;
+    .muted {
+      color: var(--text-2);
     }
 
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      border-radius:999px;
-      padding:7px 11px;
-      font-size:11px;
-      font-weight:700;
-      text-transform:uppercase;
-      letter-spacing:.08em;
-      border:1px solid var(--line);
-      background:#fff;
-      white-space:nowrap;
+    .empty {
+      text-align: center;
+      padding: 34px 20px;
+      color: var(--text-2);
+      font-size: 15px;
     }
 
-    .badge.ok{color:var(--ok); background:#edf8f1; border-color:#cce8d5}
-    .badge.warn{color:var(--warn); background:#fff5e5; border-color:#ecd8ad}
-    .badge.danger{color:var(--danger); background:#fff0f0; border-color:#ebc8c8}
-    .badge.info{color:var(--info); background:#e8f2fa; border-color:#b8d4ea}
-    .badge.muted{color:var(--muted); background:#f5f3ee; border-color:var(--line)}
-
-    .cell-title{
-      font-weight:700;
-      margin-bottom:6px;
-      line-height:1.35;
+    .link-btn {
+      border: 0;
+      background: transparent;
+      color: var(--accent);
+      font-weight: 700;
+      cursor: pointer;
+      padding: 0;
+      font-family: inherit;
+      font-size: 14px;
     }
 
-    .cell-sub{
-      color:var(--muted);
-      font-size:12px;
-      line-height:1.5;
+    .link-btn:hover {
+      text-decoration: underline;
     }
 
-    .text-preview{
-      max-width:540px;
-      line-height:1.55;
-      color:#272727;
-      white-space:pre-wrap;
+    .truncate-2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
     }
 
-    .row-actions{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 34px;
+      padding: 0 14px;
+      border-radius: 999px;
+      background: #f4efe6;
+      color: #665f57;
+      border: 1px solid #ded6ca;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
-    .small-btn{
-      min-height:36px;
-      padding:0 12px;
-      border-radius:12px;
-      font-size:12px;
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(20, 16, 12, 0.48);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 22px;
+      backdrop-filter: blur(2px);
     }
 
-    .layout-bottom{
-      display:grid;
-      grid-template-columns: 1.2fr .8fr;
-      gap:18px;
-      margin-top:18px;
+    .modal-overlay.show {
+      display: flex;
     }
 
-    .drawer{
-      padding:18px;
+    .modal-box {
+      width: min(900px, 96vw);
+      max-height: 92vh;
+      overflow-y: auto;
+      background: #f8f6f1;
+      border: 1px solid #d9d0c1;
+      border-radius: 24px;
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.22);
+      padding: 22px 22px 18px;
     }
 
-    .drawer h2{
-      margin:0 0 12px;
-      font-size:20px;
-      letter-spacing:-.03em;
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
     }
 
-    .drawer .muted{
-      color:var(--muted);
-      line-height:1.6;
-      font-size:14px;
+    .modal-title-wrap h3 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.02;
+      letter-spacing: -0.03em;
     }
 
-    .details-box{
-      margin-top:14px;
-      border:1px solid var(--line);
-      background:#fcfbf8;
-      border-radius:16px;
-      padding:16px;
-      min-height:220px;
+    .modal-title-wrap p {
+      margin: 8px 0 0;
+      color: var(--text-2);
+      font-size: 14px;
     }
 
-    .details-empty{
-      color:var(--muted);
-      font-size:14px;
-      line-height:1.6;
+    .modal-close {
+      width: 42px;
+      height: 42px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      color: #5e564d;
+      font-size: 28px;
+      line-height: 1;
+      cursor: pointer;
     }
 
-    .kv{
-      display:grid;
-      grid-template-columns:160px 1fr;
-      gap:10px;
-      padding:10px 0;
-      border-bottom:1px dashed #e3ddd1;
+    .detail-card {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid #ddd4c7;
+      border-radius: 18px;
+      overflow: hidden;
+      margin-top: 14px;
     }
 
-    .kv:last-child{border-bottom:none}
-    .kv .key{
-      color:var(--muted);
-      font-size:12px;
-      text-transform:uppercase;
-      letter-spacing:.10em;
-    }
-    .kv .val{
-      line-height:1.6;
-      word-break:break-word;
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 220px 1fr;
     }
 
-    .empty{
-      padding:30px;
-      text-align:center;
-      color:var(--muted);
-      margin-top:18px;
-      display:none;
+    @media (max-width: 760px) {
+      .detail-grid {
+        grid-template-columns: 1fr;
+      }
     }
 
-    .footer-note{
-      margin-top:12px;
-      font-size:12px;
-      color:var(--muted);
-      line-height:1.6;
+    .detail-row {
+      display: contents;
     }
 
-    .loader{
-      width:18px;
-      height:18px;
-      border-radius:999px;
-      border:2px solid rgba(255,255,255,.35);
-      border-top-color:#fff;
-      display:inline-block;
-      animation:spin .8s linear infinite;
-      vertical-align:middle;
+    .detail-label, .detail-value {
+      padding: 16px 18px;
+      border-bottom: 1px solid #e8e0d4;
     }
 
-    .error-banner{
-      background:#fff0f0;
-      border:1px solid #ebc8c8;
-      color:#8b1e1e;
-      padding:12px 14px;
-      border-radius:14px;
-      margin-bottom:14px;
-      display:none;
-      white-space:pre-wrap;
+    .detail-label {
+      background: rgba(250, 247, 241, 0.85);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--text-2);
     }
 
-    @keyframes spin{
-      to{transform:rotate(360deg)}
+    .detail-value {
+      background: rgba(255, 255, 255, 0.78);
+      font-size: 15px;
+      line-height: 1.55;
+      word-break: break-word;
     }
 
-    @media (max-width: 1100px){
-      .topbar, .layout-bottom{grid-template-columns:1fr}
-      .filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-      .field.span-2,.field.span-3,.field.span-6{grid-column:span 2}
+    .detail-value pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      font-family: inherit;
+      font-size: 15px;
+      line-height: 1.55;
     }
 
-    @media (max-width: 680px){
-      .app{width:min(100% - 18px, 100%)}
-      .hero,.status-card,.filters,.results,.drawer,.empty{border-radius:18px}
-      .filters-grid{grid-template-columns:1fr}
-      .field.span-2,.field.span-3,.field.span-6{grid-column:span 1}
-      .status-grid{grid-template-columns:1fr 1fr}
-      .kv{grid-template-columns:1fr}
+    .footer-note {
+      margin-top: 14px;
+      color: var(--text-3);
+      font-size: 13px;
+    }
+
+    .hidden {
+      display: none !important;
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <div id="fatalError" class="error-banner"></div>
-
-    <section class="topbar">
-      <div class="hero">
-        <div class="eyebrow">Tracker de Prazos • SNAP</div>
-        <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
-        <p>
-          Interface refeita para consultar publicações via Worker, revisar conteúdo,
-          identificar processo, vara, partes e registrar prazo final no próprio painel.
+  <div class="page">
+    <header class="hero">
+      <div>
+        <h1 class="hero-title">Tracker de Prazos • SNAP</h1>
+        <p class="hero-subtitle">
+          Consulte publicações, visualize os dados estruturados e abra o conteúdo completo em janela frontal.
         </p>
       </div>
+    </header>
 
-      <div class="status-card">
-        <div class="filters-title">Painel rápido</div>
-        <div class="status-grid">
-          <div class="mini">
-            <div class="k">Conexão</div>
-            <div class="v" id="connStatus">Aguardando</div>
+    <section class="card panel">
+      <form id="consultaForm">
+        <div class="form-grid">
+          <div class="field">
+            <label for="workerUrl">Endpoint do Worker</label>
+            <input
+              id="workerUrl"
+              class="input"
+              type="url"
+              placeholder="https://seu-worker.exemplo.workers.dev/"
+              autocomplete="off"
+            />
           </div>
-          <div class="mini">
-            <div class="k">Resultados</div>
-            <div class="v" id="resultsCount">0</div>
+
+          <div class="field">
+            <label for="nomeConsulta">Nome / termo</label>
+            <input
+              id="nomeConsulta"
+              class="input"
+              type="text"
+              placeholder="Ex.: FT Transporte"
+              autocomplete="off"
+            />
           </div>
-          <div class="mini">
-            <div class="k">Prazos salvos</div>
-            <div class="v" id="savedDeadlinesCount">0</div>
+
+          <div class="field">
+            <label for="dataInicial">Data inicial</label>
+            <input id="dataInicial" class="input" type="date" />
           </div>
-          <div class="mini">
-            <div class="k">Última busca</div>
-            <div class="v" id="lastFetch">—</div>
+
+          <div class="field">
+            <label for="dataFinal">Data final</label>
+            <input id="dataFinal" class="input" type="date" />
+          </div>
+
+          <div class="actions">
+            <button type="submit" class="btn btn-primary">Consultar</button>
+            <button type="button" id="limparBtn" class="btn btn-secondary">Limpar</button>
           </div>
         </div>
-        <div id="globalMessage" class="footer-note">
-          Configure o endpoint do Worker e faça a primeira consulta.
-        </div>
-      </div>
+      </form>
     </section>
 
-    <section class="filters">
-      <div class="filters-header">
-        <div class="filters-title">Filtros de busca</div>
-        <div class="actions">
-          <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
-          <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
-          <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
-          <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
-          <button class="btn-danger" id="btnLimpar" type="button">Limpar filtros</button>
-        </div>
-      </div>
-
-      <div class="filters-grid">
-        <div class="field">
-          <label for="desde">Desde</label>
-          <input type="date" id="desde" />
-        </div>
-
-        <div class="field">
-          <label for="ate">Até</label>
-          <input type="date" id="ate" />
-        </div>
-
-        <div class="field">
-          <label for="limit">Limite</label>
-          <select id="limit">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="comTexto">Trazer texto</label>
-          <select id="comTexto">
-            <option value="true" selected>Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
-
-        <div class="field span-2">
-          <label for="buscaLivre">Filtro local por termo</label>
-          <input
-            type="text"
-            id="buscaLivre"
-            placeholder="processo, parte, vara, tribunal, trecho do texto..."
-          />
-        </div>
-
-        <div class="field span-2">
-          <label for="somenteComPrazo">Exibição</label>
-          <select id="somenteComPrazo">
-            <option value="todos" selected>Todas as publicações</option>
-            <option value="comPrazo">Somente com prazo salvo</option>
-            <option value="semPrazo">Somente sem prazo salvo</option>
-          </select>
-        </div>
-
-        <div class="field span-6">
-          <label for="workerUrl">Endpoint do Worker</label>
-          <input
-            type="text"
-            id="workerUrl"
-            placeholder="https://seu-worker.seudominio.workers.dev"
-          />
-        </div>
-      </div>
-
-      <div class="footer-note">
-        O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
-      </div>
-    </section>
-
-    <section class="results">
-      <div class="results-head">
-        <div class="results-title">Publicações encontradas</div>
-        <div class="actions">
-          <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
-          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
-        </div>
+    <section class="card panel">
+      <div class="status-bar">
+        <div id="statusText" class="status">Aguardando consulta.</div>
+        <div id="resultadoBadge" class="badge badge-warning">Sem resultados</div>
       </div>
 
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
-              <th style="width:130px;">Data</th>
-              <th style="width:160px;">Diário / Tribunal</th>
-              <th style="width:210px;">Processo / Vara</th>
-              <th style="width:260px;">Partes / Classe</th>
+              <th>ID</th>
+              <th>Formato</th>
+              <th>Data da publicação</th>
+              <th>Tribunal</th>
+              <th>Processo</th>
+              <th>Partes</th>
+              <th>Advogados</th>
+              <th>Tipo de ato</th>
               <th>Texto</th>
-              <th style="width:200px;">Prazo</th>
-              <th style="width:180px;">Ações</th>
+              <th>Ação</th>
             </tr>
           </thead>
-          <tbody id="resultsBody"></tbody>
+          <tbody id="resultadoBody">
+            <tr>
+              <td colspan="10" class="empty">Nenhuma publicação carregada.</td>
+            </tr>
+          </tbody>
         </table>
       </div>
-    </section>
 
-    <div class="empty" id="emptyState">
-      Nenhuma publicação para exibir no momento.
-    </div>
-
-    <section class="layout-bottom">
-      <div class="drawer">
-        <h2>Detalhes da publicação</h2>
-        <div class="muted">
-          Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo abaixo.
-        </div>
-        <div class="details-box" id="detailsBox">
-          <div class="details-empty">Nenhuma publicação selecionada.</div>
-        </div>
-      </div>
-
-      <div class="drawer">
-        <h2>Regras do prazo</h2>
-        <div class="muted">
-          O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
-          O prazo final pode ser lançado manualmente em cada linha.
-        </div>
-        <div class="details-box">
-          <div class="kv">
-            <div class="key">Termo inicial</div>
-            <div class="val">Data da publicação</div>
-          </div>
-          <div class="kv">
-            <div class="key">Persistência</div>
-            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
-          </div>
-          <div class="kv">
-            <div class="key">Segurança</div>
-            <div class="val">Senha da API não fica exposta no front-end.</div>
-          </div>
-          <div class="kv">
-            <div class="key">Busca</div>
-            <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
-          </div>
-        </div>
+      <div class="footer-note">
+        Clique em <strong>Ver detalhes</strong> para abrir a publicação em uma nova janela modal, na frente da tela.
       </div>
     </section>
   </div>
 
-  <script>
-    (function () {
-      "use strict";
+  <div id="modalPublicacao" class="modal-overlay" aria-hidden="true">
+    <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitulo">
+      <div class="modal-header">
+        <div class="modal-title-wrap">
+          <h3 id="modalTitulo">Detalhes da publicação</h3>
+          <p>Conteúdo completo da linha selecionada.</p>
+        </div>
+        <button type="button" class="modal-close" id="fecharModalBtn" aria-label="Fechar">×</button>
+      </div>
 
-      window.addEventListener("error", function (event) {
-        var box = document.getElementById("fatalError");
-        if (!box) return;
-        box.style.display = "block";
-        box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
+      <div id="modalPublicacaoConteudo"></div>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById("consultaForm");
+    const workerUrlInput = document.getElementById("workerUrl");
+    const nomeConsultaInput = document.getElementById("nomeConsulta");
+    const dataInicialInput = document.getElementById("dataInicial");
+    const dataFinalInput = document.getElementById("dataFinal");
+    const limparBtn = document.getElementById("limparBtn");
+    const resultadoBody = document.getElementById("resultadoBody");
+    const statusText = document.getElementById("statusText");
+    const resultadoBadge = document.getElementById("resultadoBadge");
+    const modal = document.getElementById("modalPublicacao");
+    const modalConteudo = document.getElementById("modalPublicacaoConteudo");
+    const fecharModalBtn = document.getElementById("fecharModalBtn");
+
+    let publicacoes = [];
+
+    inicializar();
+
+    function inicializar() {
+      const workerSalvo = localStorage.getItem("snap_worker_url") || "";
+      workerUrlInput.value = workerSalvo;
+
+      limparBtn.addEventListener("click", limparTela);
+      fecharModalBtn.addEventListener("click", fecharModalPublicacao);
+
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          fecharModalPublicacao();
+        }
       });
 
-      var CONFIG = {
-        defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
-        storageKeyDeadlines: "snap_tracker_deadlines_v2",
-        storageKeyWorkerUrl: "snap_worker_url",
-        actionListarPublicacoes: "listarPublicacoes",
-        actionDetalharPublicacao: "detalharPublicacao",
-        usarEndpointDetalhe: false
-      };
-
-      var state = {
-        rawItems: [],
-        filteredItems: [],
-        selectedItem: null,
-        deadlines: loadDeadlines(),
-        loading: false
-      };
-
-      function $(id) {
-        return document.getElementById(id);
-      }
-
-      var els = {
-        desde: $("desde"),
-        ate: $("ate"),
-        limit: $("limit"),
-        comTexto: $("comTexto"),
-        buscaLivre: $("buscaLivre"),
-        somenteComPrazo: $("somenteComPrazo"),
-        workerUrl: $("workerUrl"),
-        btnBuscar: $("btnBuscar"),
-        btnHoje: $("btnHoje"),
-        btn7dias: $("btn7dias"),
-        btn30dias: $("btn30dias"),
-        btnLimpar: $("btnLimpar"),
-        btnExportarJson: $("btnExportarJson"),
-        btnApagarPrazos: $("btnApagarPrazos"),
-        resultsBody: $("resultsBody"),
-        emptyState: $("emptyState"),
-        detailsBox: $("detailsBox"),
-        connStatus: $("connStatus"),
-        resultsCount: $("resultsCount"),
-        savedDeadlinesCount: $("savedDeadlinesCount"),
-        lastFetch: $("lastFetch"),
-        globalMessage: $("globalMessage")
-      };
-
-      init();
-
-      function init() {
-        els.workerUrl.value = CONFIG.defaultWorkerUrl;
-        presetLast7Days();
-        updateDashboard();
-
-        els.btnBuscar.addEventListener("click", handleBuscar);
-        els.btnHoje.addEventListener("click", presetToday);
-        els.btn7dias.addEventListener("click", presetLast7Days);
-        els.btn30dias.addEventListener("click", presetLast30Days);
-        els.btnLimpar.addEventListener("click", clearFilters);
-        els.btnExportarJson.addEventListener("click", exportJson);
-        els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
-
-        els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
-        els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
-        els.workerUrl.addEventListener("change", persistWorkerUrl);
-      }
-
-      function persistWorkerUrl() {
-        localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
-      }
-
-      function loadDeadlines() {
-        try {
-          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-        } catch (e) {
-          return {};
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal.classList.contains("show")) {
+          fecharModalPublicacao();
         }
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        await consultarPublicacoes();
+      });
+    }
+
+    function limparTela() {
+      nomeConsultaInput.value = "";
+      dataInicialInput.value = "";
+      dataFinalInput.value = "";
+      publicacoes = [];
+      renderTabela([]);
+      atualizarStatus("Aguardando consulta.", "warning", "Sem resultados");
+    }
+
+    async function consultarPublicacoes() {
+      const workerUrl = workerUrlInput.value.trim();
+      const nome = nomeConsultaInput.value.trim();
+      const dataInicial = dataInicialInput.value;
+      const dataFinal = dataFinalInput.value;
+
+      if (!workerUrl) {
+        atualizarStatus("Informe o endpoint do Worker.", "danger", "Erro");
+        alert("Informe o endpoint do Worker.");
+        return;
       }
 
-      function saveDeadlines() {
-        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
-        updateDashboard();
+      if (!nome) {
+        atualizarStatus("Informe ao menos um nome ou termo para consulta.", "danger", "Erro");
+        alert("Informe ao menos um nome ou termo para consulta.");
+        return;
       }
 
-      function updateDashboard() {
-        els.resultsCount.textContent = String(state.filteredItems.length || 0);
-        els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
-        els.connStatus.textContent = state.loading
-          ? "Consultando..."
-          : (state.rawItems.length ? "Conectado" : "Aguardando");
-      }
+      localStorage.setItem("snap_worker_url", workerUrl);
 
-      function setMessage(msg) {
-        els.globalMessage.textContent = msg;
-      }
+      atualizarStatus("Consultando publicações...", "warning", "Consultando");
+      renderCarregando();
 
-      function setLoading(on) {
-        state.loading = on;
-        els.btnBuscar.disabled = on;
-        els.btnBuscar.innerHTML = on
-          ? '<span class="loader"></span> Consultando...'
-          : "Buscar publicações";
-        updateDashboard();
-      }
-
-      function todayStr() {
-        var d = new Date();
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, "0");
-        var day = String(d.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + day;
-      }
-
-      function shiftDate(baseStr, deltaDays) {
-        var d = new Date(baseStr + "T12:00:00");
-        d.setDate(d.getDate() + deltaDays);
-        var y = d.getFullYear();
-        var m = String(d.getMonth() + 1).padStart(2, "0");
-        var day = String(d.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + day;
-      }
-
-      function presetToday() {
-        var t = todayStr();
-        els.desde.value = t;
-        els.ate.value = t;
-      }
-
-      function presetLast7Days() {
-        var t = todayStr();
-        els.ate.value = t;
-        els.desde.value = shiftDate(t, -7);
-      }
-
-      function presetLast30Days() {
-        var t = todayStr();
-        els.ate.value = t;
-        els.desde.value = shiftDate(t, -30);
-      }
-
-      function clearFilters() {
-        presetLast7Days();
-        els.limit.value = "50";
-        els.comTexto.value = "true";
-        els.buscaLivre.value = "";
-        els.somenteComPrazo.value = "todos";
-        renderRows([]);
-        state.rawItems = [];
-        state.filteredItems = [];
-        state.selectedItem = null;
-        renderDetails(null);
-        updateDashboard();
-        setMessage("Filtros limpos.");
-      }
-
-      async function handleBuscar() {
-        var workerUrl = (els.workerUrl.value || "").trim();
-
-        if (!workerUrl) {
-          setMessage("Informe o endpoint do Worker.");
-          els.workerUrl.focus();
-          return;
-        }
-
-        persistWorkerUrl();
-
-        var payload = {
-          snapAction: CONFIG.actionListarPublicacoes,
-          desde: els.desde.value || undefined,
-          ate: els.ate.value || undefined,
-          limit: Number(els.limit.value || 50),
-          comTexto: els.comTexto.value === "true",
-          comProcesso: true,
-          comPartes: true,
-          comVara: true,
-          comTribunal: true,
-          comOrgaoJulgador: true,
-          comMetadados: true
+      try {
+        const payload = {
+          snapAction: "consultarPublicacoes",
+          nomeConsulta: nome,
+          dataInicial,
+          dataFinal
         };
 
-        setLoading(true);
-        setMessage("Consultando publicações via Worker...");
-        renderRows([]);
-
-        try {
-          var res = await fetch(workerUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
-
-          var data = await safeJson(res);
-
-          if (!res.ok) {
-            throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
-          }
-
-          var items = normalizeItems(data);
-          state.rawItems = items;
-          state.selectedItem = null;
-          renderDetails(null);
-          applyLocalFiltersAndRender();
-
-          els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit"
-          });
-
-          setMessage(items.length + " publicação(ões) carregada(s).");
-        } catch (err) {
-          console.error(err);
-          state.rawItems = [];
-          state.filteredItems = [];
-          renderRows([]);
-          renderDetails(null);
-          setMessage("Falha na consulta: " + (err.message || err));
-        } finally {
-          setLoading(false);
-        }
-      }
-
-      async function safeJson(res) {
-        try {
-          return await res.json();
-        } catch (e) {
-          return {};
-        }
-      }
-
-      // ── normalizeItems ──────────────────────────────────────────────────
-      // Usa diretamente os campos já processados pelo Worker.
-      // Mantém compatibilidade com o formato antigo via fallbacks.
-      function normalizeItems(data) {
-        var arr =
-          data && (
-            data.items ||
-            data.publicacoes ||
-            (data.data && (data.data.items || data.data.publicacoes || data.data)) ||
-            (data.result && (data.result.items || data.result.publicacoes || data.result)) ||
-            []
-          );
-
-        if (!Array.isArray(arr)) return [];
-
-        return arr.map(function (item, index) {
-          var id = String(item.id || item.idPublicacao || item.codigo || ("idx_" + index));
-
-          // Campos entregues diretamente pelo Worker
-          var dataPublicacao  = normalizeDateString(item.dataPublicacao || "");
-          var tribunal        = item.tribunal  || "—";
-          var processo        = item.numeroProcesso || "—";
-          var vara            = item.vara       || "";
-          var classe          = item.classe     || "";
-          var tipoAto         = item.tipoAto    || "";
-          var partes          = item.partes     || "";
-          var advogados       = item.advogados  || "";
-          var texto           = item.texto      || "—";
-          var semEfeito       = item.semEfeitoIntimacao === true;
-          var formato         = item.formato    || "A";
-
-          // diario = tribunal (a SNAP não entrega campo diario separado)
-          var diario = tribunal;
-
-          return {
-            _raw: item,
-            id: id,
-            formato: formato,
-            semEfeitoIntimacao: semEfeito,
-            dataPublicacao: dataPublicacao,
-            diario: diario,
-            tribunal: tribunal,
-            processo: processo,
-            vara: vara,
-            classe: classe,
-            tipoAto: tipoAto,
-            partes: partes,
-            advogados: advogados,
-            texto: texto,
-            prazoFinal: state.deadlines[id] || ""
-          };
+        const response = await fetch(workerUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
         });
+
+        const json = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw new Error(json?.message || "Falha ao consultar o Worker.");
+        }
+
+        const lista = normalizarListaPublicacoes(json);
+        publicacoes = lista;
+        renderTabela(lista);
+
+        if (lista.length) {
+          atualizarStatus(`${lista.length} publicação(ões) encontrada(s).`, "ok", `${lista.length} resultado(s)`);
+        } else {
+          atualizarStatus("Consulta realizada, mas sem resultados.", "warning", "Sem resultados");
+        }
+      } catch (error) {
+        console.error(error);
+        publicacoes = [];
+        renderTabela([]);
+        atualizarStatus(error.message || "Erro inesperado na consulta.", "danger", "Erro");
+      }
+    }
+
+    function normalizarListaPublicacoes(payload) {
+      const candidatos = [
+        payload?.publicacoes,
+        payload?.resultado,
+        payload?.resultados,
+        payload?.items,
+        payload?.data,
+        payload?.pubs
+      ];
+
+      for (const item of candidatos) {
+        if (Array.isArray(item)) {
+          return item.map(normalizarPublicacao);
+        }
       }
 
-      function normalizeDateString(v) {
-        if (!v) return "";
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
-          var p = v.split("/");
-          return p[2] + "-" + p[1] + "-" + p[0];
-        }
-
-        var date = new Date(v);
-        if (Number.isNaN(date.getTime())) return String(v);
-
-        var y = date.getFullYear();
-        var m = String(date.getMonth() + 1).padStart(2, "0");
-        var d = String(date.getDate()).padStart(2, "0");
-        return y + "-" + m + "-" + d;
+      if (Array.isArray(payload)) {
+        return payload.map(normalizarPublicacao);
       }
 
-      function formatDateBR(v) {
-        if (!v) return "—";
-        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-          var p = v.split("-");
-          return p[2] + "/" + p[1] + "/" + p[0];
-        }
-        return v;
-      }
+      return [];
+    }
 
-      function applyLocalFiltersAndRender() {
-        var q = (els.buscaLivre.value || "").trim().toLowerCase();
-        var mode = els.somenteComPrazo.value;
-        var items = state.rawItems.slice();
+    function normalizarPublicacao(pub = {}) {
+      return {
+        id: pub.id ?? pub.codigo ?? pub.publicacaoId ?? "—",
+        formato: pub.formato ?? pub.tipoFormato ?? "—",
+        semEfeito:
+          pub.semEfeito === true ||
+          String(pub.tipoAto || "").toLowerCase().includes("sem efeito") ||
+          String(pub.texto || "").toLowerCase().includes("não possui efeito de intimação"),
+        dataPublicacao:
+          pub.dataPublicacao ??
+          pub.data_publicacao ??
+          pub.dtPublicacao ??
+          pub.data ??
+          "",
+        tribunal: pub.tribunal ?? pub.siglaTribunal ?? "—",
+        processo: pub.processo ?? pub.numeroProcesso ?? pub.cnj ?? "—",
+        varaUnidade: pub.varaUnidade ?? pub.vara ?? pub.unidade ?? "—",
+        classe: pub.classe ?? pub.classeProcessual ?? "—",
+        tipoAto: pub.tipoAto ?? pub.tipo_ato ?? pub.ato ?? "—",
+        partes:
+          arrayOuTexto(pub.partes) ||
+          arrayOuTexto(pub.poloPassivo) ||
+          arrayOuTexto(pub.poloAtivo) ||
+          "—",
+        advogados: arrayOuTexto(pub.advogados) || "—",
+        prazoFinal: pub.prazoFinal ?? pub.dataPrazoFinal ?? pub.prazo ?? "—",
+        texto: pub.texto ?? pub.conteudo ?? pub.publicacao ?? pub.teor ?? "—",
+        bruto: pub
+      };
+    }
 
-        if (q) {
-          items = items.filter(function (item) {
-            var blob = [
-              item.id,
-              item.dataPublicacao,
-              item.tribunal,
-              item.processo,
-              item.vara,
-              item.classe,
-              item.tipoAto,
-              item.partes,
-              item.advogados,
-              item.texto,
-              JSON.stringify(item._raw || {})
-            ].join(" ").toLowerCase();
-
-            return blob.indexOf(q) >= 0;
-          });
-        }
-
-        if (mode === "comPrazo") {
-          items = items.filter(function (item) { return !!state.deadlines[item.id]; });
-        } else if (mode === "semPrazo") {
-          items = items.filter(function (item) { return !state.deadlines[item.id]; });
-        }
-
-        state.filteredItems = items;
-        renderRows(items);
-        updateDashboard();
-      }
-
-      function renderRows(items) {
-        els.resultsBody.innerHTML = "";
-
-        if (!items.length) {
-          els.emptyState.style.display = "block";
-          return;
-        }
-
-        els.emptyState.style.display = "none";
-
-        var frag = document.createDocumentFragment();
-
-        items.forEach(function (item) {
-          var tr = document.createElement("tr");
-
-          // Classe CSS para publicações sem efeito de intimação
-          if (item.semEfeitoIntimacao) {
-            tr.classList.add("sem-efeito");
-          }
-
-          var prazo = state.deadlines[item.id] || "";
-          var badgeClass = prazo ? "ok" : "warn";
-          var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
-
-          // Badge de tipo de ato / sem efeito
-          var tipoAtoBadge = "";
-          if (item.semEfeitoIntimacao) {
-            tipoAtoBadge = '<span class="badge muted" style="margin-top:4px;">Sem efeito</span>';
-          } else if (item.tipoAto && item.tipoAto !== "Outro") {
-            var tipoClass = item.tipoAto === "Intimação" ? "info" :
-                            item.tipoAto === "Despacho"  ? "warn" :
-                            item.tipoAto === "Sentença"  ? "danger" :
-                            item.tipoAto === "Decisão"   ? "danger" : "";
-            if (tipoClass) {
-              tipoAtoBadge = '<span class="badge ' + tipoClass + '" style="margin-top:4px;">' + escapeHtml(item.tipoAto) + '</span>';
+    function arrayOuTexto(valor) {
+      if (!valor) return "";
+      if (Array.isArray(valor)) {
+        return valor
+          .map((item) => {
+            if (typeof item === "string") return item.trim();
+            if (typeof item === "object" && item !== null) {
+              return item.nome || item.parte || item.advogado || JSON.stringify(item);
             }
-          }
-
-          // Coluna Processo / Vara
-          var varaTexto = item.vara || "";
-          var classeTexto = item.classe || "";
-
-          // Coluna Partes / Classe
-          var partesTexto = item.partes || "—";
-
-          tr.innerHTML = ''
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div>'
-            + '  <div class="cell-sub mono">ID ' + escapeHtml(item.id) + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(item.tribunal || "—") + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title mono">' + escapeHtml(item.processo || "—") + '</div>'
-            + '  <div class="cell-sub">' + escapeHtml(varaTexto) + '</div>'
-            + (classeTexto ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(classeTexto) + '</div>' : '')
-            + '</td>'
-            + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(truncate(partesTexto, 180)) + '</div>'
-            + (item.advogados ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(truncate(item.advogados, 120)) + '</div>' : '')
-            + '</td>'
-            + '<td>'
-            + '  <div class="text-preview">' + escapeHtml(truncate(item.texto || "—", 330)) + '</div>'
-            + '</td>'
-            + '<td>'
-            + '  <div style="display:grid; gap:6px;">'
-            + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
-            + tipoAtoBadge
-            + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
-            + '  </div>'
-            + '</td>'
-            + '<td>'
-            + '  <div class="row-actions">'
-            + '    <button class="btn-secondary small-btn" data-detail-id="' + escapeHtmlAttr(item.id) + '" type="button">Ver detalhes</button>'
-            + '    <button class="btn-ghost small-btn" data-copy-id="' + escapeHtmlAttr(item.id) + '" type="button">Copiar texto</button>'
-            + '  </div>'
-            + '</td>';
-
-          frag.appendChild(tr);
-        });
-
-        els.resultsBody.appendChild(frag);
-
-        els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
-          input.addEventListener("change", function (e) {
-            var id = e.target.getAttribute("data-deadline-id");
-            var value = e.target.value || "";
-
-            if (value) state.deadlines[id] = value;
-            else delete state.deadlines[id];
-
-            saveDeadlines();
-
-            state.rawItems = state.rawItems.map(function (i) {
-              return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
-            });
-
-            applyLocalFiltersAndRender();
-            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
-          });
-        });
-
-        els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
-          btn.addEventListener("click", async function (e) {
-            var id = e.target.getAttribute("data-detail-id");
-            var item = state.rawItems.find(function (x) { return x.id === id; });
-            if (!item) return;
-
-            state.selectedItem = item;
-            renderDetails(item);
-          });
-        });
-
-        els.resultsBody.querySelectorAll("[data-copy-id]").forEach(function (btn) {
-          btn.addEventListener("click", async function (e) {
-            var id = e.target.getAttribute("data-copy-id");
-            var item = state.rawItems.find(function (x) { return x.id === id; });
-            if (!item) return;
-
-            var text = [
-              "ID: " + item.id,
-              "Data: " + formatDateBR(item.dataPublicacao),
-              "Tribunal: " + (item.tribunal || "—"),
-              "Processo: " + (item.processo || "—"),
-              "Vara: " + (item.vara || "—"),
-              "Classe: " + (item.classe || "—"),
-              "Tipo de ato: " + (item.tipoAto || "—"),
-              "Partes: " + (item.partes || "—"),
-              "Advogados: " + (item.advogados || "—"),
-              "Prazo final: " + (state.deadlines[item.id] || "—"),
-              "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
-              "",
-              item.texto || ""
-            ].join("\n");
-
-            try {
-              await navigator.clipboard.writeText(text);
-              setMessage("Texto da publicação " + id + " copiado.");
-            } catch (e2) {
-              setMessage("Não foi possível copiar para a área de transferência.");
-            }
-          });
-        });
-      }
-
-      function renderDetails(item) {
-        if (!item) {
-          els.detailsBox.innerHTML = '<div class="details-empty">Nenhuma publicação selecionada.</div>';
-          return;
-        }
-
-        var prazo = state.deadlines[item.id] || "—";
-
-        els.detailsBox.innerHTML = ''
-          + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
-          + '<div class="kv"><div class="key">Formato</div><div class="val">' + escapeHtml(item.formato || "—") + (item.semEfeitoIntimacao ? ' &nbsp;<span class="badge muted">Sem efeito</span>' : '') + '</div></div>'
-          + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
-          + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Classe</div><div class="val">' + escapeHtml(item.classe || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Tipo de ato</div><div class="val">' + escapeHtml(item.tipoAto || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
-          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>';
-      }
-
-      function exportJson() {
-        var payload = {
-          exportedAt: new Date().toISOString(),
-          total: state.filteredItems.length,
-          itens: state.filteredItems.map(function (item) {
-            return {
-              id: item.id,
-              formato: item.formato,
-              semEfeitoIntimacao: item.semEfeitoIntimacao,
-              dataPublicacao: item.dataPublicacao,
-              tribunal: item.tribunal,
-              processo: item.processo,
-              vara: item.vara,
-              classe: item.classe,
-              tipoAto: item.tipoAto,
-              partes: item.partes,
-              advogados: item.advogados,
-              texto: item.texto,
-              prazoFinal: state.deadlines[item.id] || "",
-              raw: item._raw || {}
-            };
+            return String(item);
           })
-        };
+          .filter(Boolean)
+          .join(" • ");
+      }
+      return String(valor).trim();
+    }
 
-        var blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json;charset=utf-8"
-        });
+    function formatarDataBR(valor) {
+      if (!valor) return "—";
 
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement("a");
-        a.href = url;
-        a.download = "publicacoes-snap.json";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        setMessage("Exportação concluída.");
+      const texto = String(valor).trim();
+      if (!texto) return "—";
+
+      const soData = texto.split("T")[0].split(" ")[0];
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(soData)) {
+        const [ano, mes, dia] = soData.split("-");
+        return `${dia}/${mes}/${ano}`;
       }
 
-      function clearAllDeadlines() {
-        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
-        state.deadlines = {};
-        saveDeadlines();
-        applyLocalFiltersAndRender();
-        renderDetails(state.selectedItem);
-        setMessage("Todos os prazos foram apagados.");
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(soData)) {
+        return soData;
       }
 
-      function truncate(text, max) {
-        var s = String(text || "");
-        return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+      const data = new Date(texto);
+      if (!Number.isNaN(data.getTime())) {
+        const dia = String(data.getDate()).padStart(2, "0");
+        const mes = String(data.getMonth() + 1).padStart(2, "0");
+        const ano = data.getFullYear();
+        return `${dia}/${mes}/${ano}`;
       }
 
-      function escapeHtml(str) {
-        return String(str == null ? "" : str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;")
-          .replace(/"/g, "&quot;")
-          .replace(/'/g, "&#39;");
+      return texto;
+    }
+
+    function escapeHtml(valor) {
+      return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function renderCarregando() {
+      resultadoBody.innerHTML = `
+        <tr>
+          <td colspan="10" class="empty">Consultando...</td>
+        </tr>
+      `;
+    }
+
+    function renderTabela(lista) {
+      if (!Array.isArray(lista) || !lista.length) {
+        resultadoBody.innerHTML = `
+          <tr>
+            <td colspan="10" class="empty">Nenhuma publicação encontrada.</td>
+          </tr>
+        `;
+        return;
       }
 
-      function escapeHtmlAttr(str) {
-        return escapeHtml(str).replace(/`/g, "&#96;");
+      resultadoBody.innerHTML = lista
+        .map((pub, index) => {
+          const badgeSemEfeito = pub.semEfeito
+            ? `<span class="pill">Sem efeito</span>`
+            : `<span class="pill">${escapeHtml(pub.formato || "—")}</span>`;
+
+          return `
+            <tr>
+              <td class="mono">${escapeHtml(pub.id)}</td>
+              <td>${badgeSemEfeito}</td>
+              <td>${escapeHtml(formatarDataBR(pub.dataPublicacao))}</td>
+              <td>${escapeHtml(pub.tribunal)}</td>
+              <td class="mono">${escapeHtml(pub.processo)}</td>
+              <td>${escapeHtml(pub.partes)}</td>
+              <td>${escapeHtml(pub.advogados)}</td>
+              <td>${escapeHtml(pub.tipoAto)}</td>
+              <td><div class="truncate-2">${escapeHtml(pub.texto)}</div></td>
+              <td>
+                <button type="button" class="link-btn" onclick="abrirDetalhesPorIndice(${index})">
+                  Ver detalhes
+                </button>
+              </td>
+            </tr>
+          `;
+        })
+        .join("");
+    }
+
+    function atualizarStatus(texto, tipo = "warning", badgeTexto = "") {
+      statusText.textContent = texto;
+      resultadoBadge.textContent = badgeTexto || texto;
+      resultadoBadge.className = "badge";
+
+      if (tipo === "ok") {
+        resultadoBadge.classList.add("badge-ok");
+      } else if (tipo === "danger") {
+        resultadoBadge.classList.add("badge-danger");
+      } else {
+        resultadoBadge.classList.add("badge-warning");
       }
-    })();
+    }
+
+    function montarHtmlDetalhesPublicacao(pub) {
+      const formatoComPill = `
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <strong>${escapeHtml(pub.formato || "—")}</strong>
+          ${pub.semEfeito ? `<span class="pill">Sem efeito</span>` : ""}
+        </div>
+      `;
+
+      return `
+        <div class="detail-card">
+          <div class="detail-grid">
+            <div class="detail-row">
+              <div class="detail-label">ID</div>
+              <div class="detail-value mono">${escapeHtml(pub.id)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Formato</div>
+              <div class="detail-value">${formatoComPill}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Data da publicação</div>
+              <div class="detail-value">${escapeHtml(formatarDataBR(pub.dataPublicacao))}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Tribunal</div>
+              <div class="detail-value">${escapeHtml(pub.tribunal)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Processo</div>
+              <div class="detail-value mono">${escapeHtml(pub.processo)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Vara / Unidade</div>
+              <div class="detail-value">${escapeHtml(pub.varaUnidade)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Classe</div>
+              <div class="detail-value">${escapeHtml(pub.classe)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Tipo de ato</div>
+              <div class="detail-value">${escapeHtml(pub.tipoAto)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Partes</div>
+              <div class="detail-value">${escapeHtml(pub.partes)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Advogados</div>
+              <div class="detail-value">${escapeHtml(pub.advogados)}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Prazo final</div>
+              <div class="detail-value">${escapeHtml(formatarDataBR(pub.prazoFinal))}</div>
+            </div>
+
+            <div class="detail-row">
+              <div class="detail-label">Texto</div>
+              <div class="detail-value"><pre>${escapeHtml(pub.texto)}</pre></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function abrirDetalhesPorIndice(index) {
+      const pub = publicacoes[index];
+      if (!pub) return;
+
+      modalConteudo.innerHTML = montarHtmlDetalhesPublicacao(pub);
+      modal.classList.add("show");
+      modal.setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+    }
+
+    function fecharModalPublicacao() {
+      modal.classList.remove("show");
+      modal.setAttribute("aria-hidden", "true");
+      modalConteudo.innerHTML = "";
+      document.body.classList.remove("modal-open");
+    }
+
+    window.abrirDetalhesPorIndice = abrirDetalhesPorIndice;
   </script>
 </body>
 </html>
