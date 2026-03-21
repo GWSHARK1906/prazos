@@ -504,6 +504,7 @@
       cursor:pointer;
     }
 
+
     .deadline-manual-wrap{
       margin-top:18px;
       padding:18px;
@@ -655,7 +656,7 @@
           </select>
         </div>
 
-        <div class="field span-6">
+        <div class="field span-6" style="display:none;">
           <label for="workerUrl">Endpoint do Worker</label>
           <input
             type="text"
@@ -665,7 +666,7 @@
         </div>
       </div>
 
-      <div class="footer-note">
+      <div class="footer-note" style="display:none;">
         O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
       </div>
     </section>
@@ -744,7 +745,10 @@
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
       <div class="modal-head">
         <h2 class="modal-title" id="detailsModalTitle">Detalhes da publicação</h2>
-        <button class="modal-close" id="btnFecharModal" type="button" aria-label="Fechar">×</button>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>
+          <button class="modal-close" id="btnFecharModal" type="button" aria-label="Fechar">×</button>
+        </div>
       </div>
       <div id="detailsModalContent"></div>
     </div>
@@ -762,7 +766,7 @@
       });
 
       var CONFIG = {
-        defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
+        defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
         storageKeyDeadlines: "snap_tracker_deadlines_v2",
         storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
@@ -814,6 +818,7 @@
 
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
+        localStorage.setItem(CONFIG.storageKeyWorkerUrl, CONFIG.defaultWorkerUrl);
         presetLast7Days();
         applyDateMask(els.desde);
         applyDateMask(els.ate);
@@ -852,11 +857,6 @@
           var btnFecharManual = e.target.closest("#btnFecharPrazoManual");
           if (btnFecharManual) {
             toggleManualDeadlineForm(false);
-          }
-
-          var btnSalvarPrazo = e.target.closest("#btnSalvarPrazoManual");
-          if (btnSalvarPrazo) {
-            salvarPrazoManual();
           }
         });
       }
@@ -1051,7 +1051,7 @@
           var tipoAto         = item.tipoAto    || "";
           var partes          = item.partes     || "";
           var advogados       = item.advogados  || "";
-          var texto           = item.textoResumo || item.texto || "—";
+          var texto           = item.texto      || "—";
           var semEfeito       = item.semEfeitoIntimacao === true;
           var formato         = item.formato    || "A";
 
@@ -1215,6 +1215,7 @@
           } else if (item.tipoAto && item.tipoAto !== "Outro") {
             var tipoClass = item.tipoAto === "Intimação" ? "info" :
                             item.tipoAto === "Despacho"  ? "warn" :
+                            item.tipoAto === "Sentença"  ? "danger" :
                             item.tipoAto === "Decisão"   ? "danger" : "";
             if (tipoClass) {
               tipoAtoBadge = '<span class="badge ' + tipoClass + '" style="margin-top:4px;">' + escapeHtml(item.tipoAto) + '</span>';
@@ -1333,45 +1334,85 @@
 
         els.detailsModalContent.innerHTML = ''
           + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
+          + '<div class="kv"><div class="key">Formato</div><div class="val">' + escapeHtml(item.formato || "—") + (item.semEfeitoIntimacao ? ' &nbsp;<span class="badge muted">Sem efeito</span>' : '') + '</div></div>'
           + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
           + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Classe</div><div class="val">' + escapeHtml(item.classe || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Tipo de ato</div><div class="val">' + escapeHtml(item.tipoAto || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
-          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.textoResumo || item.texto || "—") + '</div></div>'
-          + '<div style="margin-top:24px; display:flex; justify-content:flex-end;">'
-          + '  <button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>'
-          + '</div>'
+          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>'
+
           + '<div id="deadlineManualWrap" class="deadline-manual-wrap">'
           + '  <h3 class="deadline-manual-title">Definir prazo manualmente</h3>'
           + '  <div class="deadline-manual-grid">'
           + '    <div class="field">'
           + '      <label for="prazoInicialManual">Prazo Inicial</label>'
-          + '      <input type="date" id="prazoInicialManual">'
+          + '      <input type="text" id="prazoInicialManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
           + '    </div>'
           + '    <div class="field">'
           + '      <label for="prazoSeguroManual">Prazo Seguro</label>'
-          + '      <input type="date" id="prazoSeguroManual">'
+          + '      <input type="text" id="prazoSeguroManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
           + '    </div>'
           + '    <div class="field">'
           + '      <label for="prazoFatalManual">Prazo Fatal</label>'
-          + '      <input type="date" id="prazoFatalManual">'
+          + '      <input type="text" id="prazoFatalManual" placeholder="dd/mm/yyyy" inputmode="numeric" maxlength="10">'
           + '    </div>'
           + '    <div class="field span-full">'
           + '      <label for="tarefaPrazoManual">Tarefa</label>'
           + '      <textarea id="tarefaPrazoManual" placeholder="Descreva a tarefa vinculada a este prazo."></textarea>'
           + '    </div>'
           + '  </div>'
-          + '  <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:12px;">'
+          + '  <div style="margin-top:14px; display:flex; justify-content:flex-end;">'
           + '    <button type="button" id="btnFecharPrazoManual" class="btn-secondary">Fechar</button>'
-          + '    <button type="button" id="btnSalvarPrazoManual" class="btn-primary">Salvar Prazo</button>'
           + '  </div>'
           + '</div>';
 
         openDetailsModal();
+      }
+
+      function toggleManualDeadlineForm(show) {
+        var wrap = document.getElementById("deadlineManualWrap");
+        if (!wrap) return;
+
+        if (show) {
+          wrap.classList.add("show");
+
+          var prazoInicialInput = document.getElementById("prazoInicialManual");
+          var prazoSeguroInput = document.getElementById("prazoSeguroManual");
+          var prazoFatalInput = document.getElementById("prazoFatalManual");
+
+          if (prazoInicialInput) {
+            applyDateMask(prazoInicialInput);
+            if (!prazoInicialInput.value && state.selectedItem && state.selectedItem.dataPublicacao) {
+              prazoInicialInput.value = getNextBusinessDayBR(state.selectedItem.dataPublicacao);
+            }
+          }
+
+          if (prazoSeguroInput) applyDateMask(prazoSeguroInput);
+          if (prazoFatalInput) applyDateMask(prazoFatalInput);
+        } else {
+          wrap.classList.remove("show");
+        }
+      }
+
+      function getNextBusinessDayBR(isoDate) {
+        if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "";
+
+        var d = new Date(isoDate + "T12:00:00");
+        d.setDate(d.getDate() + 1);
+
+        while (d.getDay() === 0 || d.getDay() === 6) {
+          d.setDate(d.getDate() + 1);
+        }
+
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return day + "/" + m + "/" + y;
       }
 
       function openDetailsModal() {
@@ -1387,65 +1428,6 @@
         document.body.classList.remove("modal-open");
       }
 
-      function toggleManualDeadlineForm(show) {
-        var wrap = document.getElementById("deadlineManualWrap");
-        if (!wrap) return;
-
-        if (show) {
-          wrap.classList.add("show");
-          // Preenche o prazo inicial com a data da publicação (formato YYYY-MM-DD)
-          var inicialInput = document.getElementById("prazoInicialManual");
-          if (state.selectedItem && state.selectedItem.dataPublicacao) {
-            var isoDate = state.selectedItem.dataPublicacao;
-            if (isoDate.includes('-')) {
-              inicialInput.value = isoDate;
-            } else {
-              inicialInput.value = brToIso(state.selectedItem.dataPublicacao);
-            }
-          }
-        } else {
-          wrap.classList.remove("show");
-        }
-      }
-
-      function salvarPrazoManual() {
-        if (!state.selectedItem) {
-          alert("Nenhuma publicação selecionada.");
-          return;
-        }
-
-        var id = state.selectedItem.id;
-        var inicial = document.getElementById("prazoInicialManual").value;
-        var seguro = document.getElementById("prazoSeguroManual").value;
-        var fatal = document.getElementById("prazoFatalManual").value;
-        var tarefa = document.getElementById("tarefaPrazoManual").value.trim();
-
-        if (!fatal) {
-          alert("O Prazo Fatal é obrigatório.");
-          return;
-        }
-
-        // Salva o prazo fatal como principal
-        state.deadlines[id] = fatal;
-
-        // Salva detalhes extras
-        state.deadlines[id + "_detalhes"] = {
-          inicial: inicial || state.selectedItem.dataPublicacao,
-          seguro: seguro || "",
-          fatal: fatal,
-          tarefa: tarefa || "Prazo manual para publicação " + id
-        };
-
-        saveDeadlines();
-
-        // Atualiza tabela e modal
-        applyLocalFiltersAndRender();
-        renderDetails(state.selectedItem);
-
-        toggleManualDeadlineForm(false);
-        setMessage("Prazo manual salvo para publicação " + id + ".");
-      }
-
       function exportJson() {
         var payload = {
           exportedAt: new Date().toISOString(),
@@ -1453,16 +1435,18 @@
           itens: state.filteredItems.map(function (item) {
             return {
               id: item.id,
+              formato: item.formato,
+              semEfeitoIntimacao: item.semEfeitoIntimacao,
               dataPublicacao: item.dataPublicacao,
               tribunal: item.tribunal,
               processo: item.processo,
               vara: item.vara,
+              classe: item.classe,
               tipoAto: item.tipoAto,
               partes: item.partes,
               advogados: item.advogados,
-              texto: item.textoResumo || item.texto || "",
+              texto: item.texto,
               prazoFinal: state.deadlines[item.id] || "",
-              prazoDetalhes: state.deadlines[item.id + "_detalhes"] || null,
               raw: item._raw || {}
             };
           })
