@@ -1,1026 +1,1527 @@
-<script>
-  /******************************************************************
-   * CONFIG CENTRAL
-   ******************************************************************/
-  const CONFIG = {
-    defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
-    storageKeyDeadlines: "snap_tracker_deadlines_v2",
-    storageKeyWorkerUrl: "snap_worker_url",
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker de Prazos • SNAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 
-    actionListarPublicacoes: "listarPublicacoes",
-    actionDetalharPublicacao: "detalharPublicacao",
-
-    usarEndpointDetalhe: false
-  };
-
-  const state = {
-    rawItems: [],
-    filteredItems: [],
-    selectedItem: null,
-    deadlines: loadDeadlines(),
-    loading: false
-  };
-
-  const $ = (id) => document.getElementById(id);
-
-  const els = {
-    desde: $("desde"),
-    ate: $("ate"),
-    limit: $("limit"),
-    comTexto: $("comTexto"),
-    buscaLivre: $("buscaLivre"),
-    somenteComPrazo: $("somenteComPrazo"),
-    workerUrl: $("workerUrl"),
-    btnBuscar: $("btnBuscar"),
-    btnHoje: $("btnHoje"),
-    btn7dias: $("btn7dias"),
-    btn30dias: $("btn30dias"),
-    btnLimpar: $("btnLimpar"),
-    btnExportarJson: $("btnExportarJson"),
-    btnApagarPrazos: $("btnApagarPrazos"),
-    resultsBody: $("resultsBody"),
-    emptyState: $("emptyState"),
-    detailsBox: $("detailsBox"),
-    connStatus: $("connStatus"),
-    resultsCount: $("resultsCount"),
-    savedDeadlinesCount: $("savedDeadlinesCount"),
-    lastFetch: $("lastFetch"),
-    globalMessage: $("globalMessage")
-  };
-
-  init();
-
-  function init() {
-    els.workerUrl.value = CONFIG.defaultWorkerUrl;
-    presetLast7Days();
-    updateDashboard();
-
-    els.btnBuscar.addEventListener("click", handleBuscar);
-    els.btnHoje.addEventListener("click", presetToday);
-    els.btn7dias.addEventListener("click", presetLast7Days);
-    els.btn30dias.addEventListener("click", presetLast30Days);
-    els.btnLimpar.addEventListener("click", clearFilters);
-    els.btnExportarJson.addEventListener("click", exportJson);
-    els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
-
-    els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
-    els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
-    els.workerUrl.addEventListener("change", persistWorkerUrl);
-  }
-
-  function persistWorkerUrl() {
-    localStorage.setItem(CONFIG.storageKeyWorkerUrl, els.workerUrl.value.trim());
-  }
-
-  function loadDeadlines() {
-    try {
-      return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-    } catch {
-      return {};
-    }
-  }
-
-  function saveDeadlines() {
-    localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
-    updateDashboard();
-  }
-
-  function updateDashboard() {
-    els.resultsCount.textContent = String(state.filteredItems.length || 0);
-    els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
-    els.connStatus.textContent = state.loading
-      ? "Consultando..."
-      : (state.rawItems.length ? "Conectado" : "Aguardando");
-  }
-
-  function setMessage(msg) {
-    els.globalMessage.textContent = msg;
-  }
-
-  function setLoading(on) {
-    state.loading = on;
-    els.btnBuscar.disabled = on;
-    els.btnBuscar.innerHTML = on
-      ? '<span class="loader"></span> Consultando...'
-      : 'Buscar publicações';
-    updateDashboard();
-  }
-
-  function todayStr() {
-    const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function shiftDate(baseStr, deltaDays) {
-    const d = new Date(baseStr + "T12:00:00");
-    d.setDate(d.getDate() + deltaDays);
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, "0");
-    const day = String(d.getDate()).padStart(2, "0");
-    return `${y}-${m}-${day}`;
-  }
-
-  function presetToday() {
-    const t = todayStr();
-    els.desde.value = t;
-    els.ate.value = t;
-  }
-
-  function presetLast7Days() {
-    const t = todayStr();
-    els.ate.value = t;
-    els.desde.value = shiftDate(t, -7);
-  }
-
-  function presetLast30Days() {
-    const t = todayStr();
-    els.ate.value = t;
-    els.desde.value = shiftDate(t, -30);
-  }
-
-  function clearFilters() {
-    presetLast7Days();
-    els.limit.value = "50";
-    els.comTexto.value = "true";
-    els.buscaLivre.value = "";
-    els.somenteComPrazo.value = "todos";
-    renderRows([]);
-    state.rawItems = [];
-    state.filteredItems = [];
-    state.selectedItem = null;
-    renderDetails(null);
-    updateDashboard();
-    setMessage("Filtros limpos.");
-  }
-
-  async function handleBuscar() {
-    const workerUrl = els.workerUrl.value.trim();
-    if (!workerUrl) {
-      setMessage("Informe o endpoint do Worker.");
-      els.workerUrl.focus();
-      return;
+  <style>
+    :root{
+      --bg:#f7f5f0;
+      --panel:#ffffff;
+      --panel-2:#f1ede4;
+      --line:#ddd7ca;
+      --line-strong:#c6bfb0;
+      --text:#191919;
+      --muted:#6b675f;
+      --accent:#8b1e1e;
+      --accent-2:#b93535;
+      --ok:#1f7a46;
+      --warn:#a66a00;
+      --danger:#a12828;
+      --shadow:0 12px 35px rgba(0,0,0,.08);
+      --radius:20px;
+      --radius-sm:14px;
+      --mono:"DM Mono", monospace;
+      --sans:"Syne", system-ui, sans-serif;
     }
 
-    persistWorkerUrl();
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+    body{min-height:100vh}
 
-    const payload = {
-      snapAction: CONFIG.actionListarPublicacoes,
-      desde: els.desde.value || undefined,
-      ate: els.ate.value || undefined,
-      limit: Number(els.limit.value || 50),
-      comTexto: els.comTexto.value === "true",
+    .app{
+      width:min(1480px, calc(100% - 32px));
+      margin:24px auto 40px;
+    }
 
-      /**************************************************************
-       * Flags extras para o Worker, caso ele suporte trazer dados
-       * enriquecidos do processo.
-       **************************************************************/
-      comProcesso: true,
-      comPartes: true,
-      comVara: true,
-      comTribunal: true,
-      comOrgaoJulgador: true,
-      comMetadados: true
-    };
+    .topbar{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:18px;
+      margin-bottom:18px;
+    }
 
-    setLoading(true);
-    setMessage("Consultando publicações via Worker...");
-    renderRows([]);
+    .hero, .status-card, .filters, .results, .drawer, .empty{
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+    }
 
-    try {
-      const res = await fetch(workerUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
+    .hero{
+      padding:28px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:180px;
+      justify-content:center;
+      background:
+        radial-gradient(circle at top right, rgba(139,30,30,.10), transparent 30%),
+        linear-gradient(180deg, #fff, #fbfaf7);
+    }
+
+    .eyebrow{
+      font-size:12px;
+      letter-spacing:.16em;
+      text-transform:uppercase;
+      color:var(--muted);
+    }
+
+    h1{
+      margin:0;
+      font-size:clamp(30px, 4vw, 48px);
+      line-height:1.02;
+      letter-spacing:-.04em;
+    }
+
+    .hero p{
+      margin:0;
+      color:var(--muted);
+      max-width:780px;
+      font-size:15px;
+      line-height:1.6;
+    }
+
+    .status-card{
+      padding:22px;
+      display:grid;
+      gap:14px;
+      align-content:start;
+    }
+
+    .status-grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+
+    .mini{
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:14px;
+      background:linear-gradient(180deg,#fff,#faf8f2);
+    }
+
+    .mini .k{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+      margin-bottom:8px;
+    }
+
+    .mini .v{
+      font-size:20px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .filters{
+      padding:18px;
+      margin-bottom:18px;
+    }
+
+    .filters-header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:16px;
+      flex-wrap:wrap;
+    }
+
+    .filters-title{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .filters-grid{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(0,1fr));
+      gap:12px;
+    }
+
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+    }
+
+    .field.span-2{grid-column:span 2}
+    .field.span-3{grid-column:span 3}
+    .field.span-6{grid-column:span 6}
+
+    label{
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+    }
+
+    input, select, textarea{
+      width:100%;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      border-radius:14px;
+      min-height:46px;
+      padding:12px 14px;
+      font:inherit;
+      outline:none;
+      transition:.18s ease;
+    }
+
+    textarea{
+      min-height:100px;
+      resize:vertical;
+    }
+
+    input:focus, select:focus, textarea:focus{
+      border-color:var(--line-strong);
+      box-shadow:0 0 0 4px rgba(139,30,30,.08);
+    }
+
+    .actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      align-items:center;
+    }
+
+    button{
+      border:none;
+      cursor:pointer;
+      border-radius:14px;
+      min-height:46px;
+      padding:0 16px;
+      font-family:var(--sans);
+      font-size:14px;
+      font-weight:700;
+      transition:.18s ease;
+    }
+
+    .btn-primary{
+      background:linear-gradient(180deg,var(--accent-2),var(--accent));
+      color:#fff;
+      box-shadow:0 10px 24px rgba(139,30,30,.22);
+    }
+    .btn-primary:hover{transform:translateY(-1px)}
+    .btn-secondary{
+      background:var(--panel-2);
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-ghost{
+      background:#fff;
+      color:var(--text);
+      border:1px solid var(--line);
+    }
+    .btn-danger{
+      background:#fff3f3;
+      color:var(--danger);
+      border:1px solid #efc7c7;
+    }
+
+    .results{
+      overflow:hidden;
+    }
+
+    .results-head{
+      padding:18px;
+      border-bottom:1px solid var(--line);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      background:linear-gradient(180deg,#fff,#fbfaf7);
+    }
+
+    .results-title{
+      font-size:18px;
+      font-weight:700;
+      letter-spacing:-.03em;
+    }
+
+    .table-wrap{
+      overflow:auto;
+    }
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      min-width:1180px;
+    }
+
+    thead th{
+      position:sticky;
+      top:0;
+      background:#faf8f3;
+      border-bottom:1px solid var(--line);
+      color:var(--muted);
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      font-size:11px;
+      text-align:left;
+      padding:14px 12px;
+      z-index:2;
+    }
+
+    tbody td{
+      border-bottom:1px solid #efeae0;
+      padding:14px 12px;
+      vertical-align:top;
+      font-size:14px;
+    }
+
+    tbody tr:hover{
+      background:#fcfbf8;
+    }
+
+    .mono{
+      font-family:var(--mono);
+      font-size:12px;
+      line-height:1.5;
+      word-break:break-word;
+    }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border-radius:999px;
+      padding:7px 11px;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      border:1px solid var(--line);
+      background:#fff;
+      white-space:nowrap;
+    }
+
+    .badge.ok{color:var(--ok); background:#edf8f1; border-color:#cce8d5}
+    .badge.warn{color:var(--warn); background:#fff5e5; border-color:#ecd8ad}
+    .badge.danger{color:var(--danger); background:#fff0f0; border-color:#ebc8c8}
+
+    .cell-title{
+      font-weight:700;
+      margin-bottom:6px;
+      line-height:1.35;
+    }
+
+    .cell-sub{
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+    }
+
+    .text-preview{
+      max-width:540px;
+      line-height:1.55;
+      color:#272727;
+      white-space:pre-wrap;
+    }
+
+    .row-actions{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+    }
+
+    .small-btn{
+      min-height:36px;
+      padding:0 12px;
+      border-radius:12px;
+      font-size:12px;
+    }
+
+    .layout-bottom{
+      display:grid;
+      grid-template-columns: 1.2fr .8fr;
+      gap:18px;
+      margin-top:18px;
+    }
+
+    .drawer{
+      padding:18px;
+    }
+
+    .drawer h2{
+      margin:0 0 12px;
+      font-size:20px;
+      letter-spacing:-.03em;
+    }
+
+    .drawer .muted{
+      color:var(--muted);
+      line-height:1.6;
+      font-size:14px;
+    }
+
+    .details-box{
+      margin-top:14px;
+      border:1px solid var(--line);
+      background:#fcfbf8;
+      border-radius:16px;
+      padding:16px;
+      min-height:220px;
+    }
+
+    .details-empty{
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.6;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns:160px 1fr;
+      gap:10px;
+      padding:10px 0;
+      border-bottom:1px dashed #e3ddd1;
+    }
+
+    .kv:last-child{border-bottom:none}
+    .kv .key{
+      color:var(--muted);
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.10em;
+    }
+    .kv .val{
+      line-height:1.6;
+      word-break:break-word;
+    }
+
+    .empty{
+      padding:30px;
+      text-align:center;
+      color:var(--muted);
+      margin-top:18px;
+      display:none;
+    }
+
+    .footer-note{
+      margin-top:12px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.6;
+    }
+
+    .loader{
+      width:18px;
+      height:18px;
+      border-radius:999px;
+      border:2px solid rgba(255,255,255,.35);
+      border-top-color:#fff;
+      display:inline-block;
+      animation:spin .8s linear infinite;
+      vertical-align:middle;
+    }
+
+    .error-banner{
+      background:#fff0f0;
+      border:1px solid #ebc8c8;
+      color:#8b1e1e;
+      padding:12px 14px;
+      border-radius:14px;
+      margin-bottom:14px;
+      display:none;
+      white-space:pre-wrap;
+    }
+
+    @keyframes spin{
+      to{transform:rotate(360deg)}
+    }
+
+    @media (max-width: 1100px){
+      .topbar, .layout-bottom{grid-template-columns:1fr}
+      .filters-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .field.span-2,.field.span-3,.field.span-6{grid-column:span 2}
+    }
+
+    @media (max-width: 680px){
+      .app{width:min(100% - 18px, 100%)}
+      .hero,.status-card,.filters,.results,.drawer,.empty{border-radius:18px}
+      .filters-grid{grid-template-columns:1fr}
+      .field.span-2,.field.span-3,.field.span-6{grid-column:span 1}
+      .status-grid{grid-template-columns:1fr 1fr}
+      .kv{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="fatalError" class="error-banner"></div>
+
+    <section class="topbar">
+      <div class="hero">
+        <div class="eyebrow">Tracker de Prazos • SNAP</div>
+        <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
+        <p>
+          Interface refeita para consultar publicações via Worker, revisar conteúdo,
+          identificar processo, vara, partes e registrar prazo final no próprio painel.
+        </p>
+      </div>
+
+      <div class="status-card">
+        <div class="filters-title">Painel rápido</div>
+        <div class="status-grid">
+          <div class="mini">
+            <div class="k">Conexão</div>
+            <div class="v" id="connStatus">Aguardando</div>
+          </div>
+          <div class="mini">
+            <div class="k">Resultados</div>
+            <div class="v" id="resultsCount">0</div>
+          </div>
+          <div class="mini">
+            <div class="k">Prazos salvos</div>
+            <div class="v" id="savedDeadlinesCount">0</div>
+          </div>
+          <div class="mini">
+            <div class="k">Última busca</div>
+            <div class="v" id="lastFetch">—</div>
+          </div>
+        </div>
+        <div id="globalMessage" class="footer-note">
+          Configure o endpoint do Worker e faça a primeira consulta.
+        </div>
+      </div>
+    </section>
+
+    <section class="filters">
+      <div class="filters-header">
+        <div class="filters-title">Filtros de busca</div>
+        <div class="actions">
+          <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
+          <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
+          <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
+          <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
+          <button class="btn-danger" id="btnLimpar" type="button">Limpar filtros</button>
+        </div>
+      </div>
+
+      <div class="filters-grid">
+        <div class="field">
+          <label for="desde">Desde</label>
+          <input type="date" id="desde" />
+        </div>
+
+        <div class="field">
+          <label for="ate">Até</label>
+          <input type="date" id="ate" />
+        </div>
+
+        <div class="field">
+          <label for="limit">Limite</label>
+          <select id="limit">
+            <option value="25">25</option>
+            <option value="50" selected>50</option>
+            <option value="100">100</option>
+            <option value="200">200</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="comTexto">Trazer texto</label>
+          <select id="comTexto">
+            <option value="true" selected>Sim</option>
+            <option value="false">Não</option>
+          </select>
+        </div>
+
+        <div class="field span-2">
+          <label for="buscaLivre">Filtro local por termo</label>
+          <input
+            type="text"
+            id="buscaLivre"
+            placeholder="processo, parte, vara, tribunal, trecho do texto..."
+          />
+        </div>
+
+        <div class="field span-2">
+          <label for="somenteComPrazo">Exibição</label>
+          <select id="somenteComPrazo">
+            <option value="todos" selected>Todas as publicações</option>
+            <option value="comPrazo">Somente com prazo salvo</option>
+            <option value="semPrazo">Somente sem prazo salvo</option>
+          </select>
+        </div>
+
+        <div class="field span-6">
+          <label for="workerUrl">Endpoint do Worker</label>
+          <input
+            type="text"
+            id="workerUrl"
+            placeholder="https://seu-worker.seudominio.workers.dev"
+          />
+        </div>
+      </div>
+
+      <div class="footer-note">
+        O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
+      </div>
+    </section>
+
+    <section class="results">
+      <div class="results-head">
+        <div class="results-title">Publicações encontradas</div>
+        <div class="actions">
+          <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
+          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:130px;">Data</th>
+              <th style="width:160px;">Diário / Tribunal</th>
+              <th style="width:210px;">Processo / Vara</th>
+              <th style="width:260px;">Partes / Classe</th>
+              <th>Texto</th>
+              <th style="width:180px;">Prazo</th>
+              <th style="width:180px;">Ações</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <div class="empty" id="emptyState">
+      Nenhuma publicação para exibir no momento.
+    </div>
+
+    <section class="layout-bottom">
+      <div class="drawer">
+        <h2>Detalhes da publicação</h2>
+        <div class="muted">
+          Clique em “Ver detalhes” em uma linha para abrir o conteúdo completo abaixo.
+        </div>
+        <div class="details-box" id="detailsBox">
+          <div class="details-empty">Nenhuma publicação selecionada.</div>
+        </div>
+      </div>
+
+      <div class="drawer">
+        <h2>Regras do prazo</h2>
+        <div class="muted">
+          O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
+          O prazo final pode ser lançado manualmente em cada linha.
+        </div>
+        <div class="details-box">
+          <div class="kv">
+            <div class="key">Termo inicial</div>
+            <div class="val">Data da publicação</div>
+          </div>
+          <div class="kv">
+            <div class="key">Persistência</div>
+            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
+          </div>
+          <div class="kv">
+            <div class="key">Segurança</div>
+            <div class="val">Senha da API não fica exposta no front-end.</div>
+          </div>
+          <div class="kv">
+            <div class="key">Busca</div>
+            <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      window.addEventListener("error", function (event) {
+        var box = document.getElementById("fatalError");
+        if (!box) return;
+        box.style.display = "block";
+        box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
       });
 
-      const data = await safeJson(res);
-
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Erro HTTP ${res.status}`);
-      }
-
-      const items = normalizeItems(data);
-      state.rawItems = items;
-      state.selectedItem = null;
-      renderDetails(null);
-      applyLocalFiltersAndRender();
-
-      els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit"
-      });
-
-      setMessage(`${items.length} publicação(ões) carregada(s).`);
-    } catch (err) {
-      console.error(err);
-      state.rawItems = [];
-      state.filteredItems = [];
-      renderRows([]);
-      renderDetails(null);
-      setMessage(`Falha na consulta: ${err.message || err}`);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function safeJson(res) {
-    try {
-      return await res.json();
-    } catch {
-      return {};
-    }
-  }
-
-  /******************************************************************
-   * NORMALIZAÇÃO ROBUSTA
-   ******************************************************************/
-  function normalizeItems(data) {
-    const arr =
-      data?.items ||
-      data?.publicacoes ||
-      data?.data?.items ||
-      data?.data?.publicacoes ||
-      data?.data ||
-      data?.result?.items ||
-      data?.result?.publicacoes ||
-      data?.result ||
-      [];
-
-    if (!Array.isArray(arr)) return [];
-
-    return arr.map((item, index) => {
-      const id = String(
-        pickFirst(item, [
-          "idPublicacao",
-          "id",
-          "codigo",
-          "sequencial",
-          "hash"
-        ]) ?? `idx_${index}`
-      );
-
-      const dataPub = pickFirst(item, [
-        "dataPublicacao",
-        "dataDisponibilizacao",
-        "data",
-        "publicadoEm",
-        "dtPublicacao",
-        "edicao.data",
-        "edicao.dataPublicacao"
-      ]);
-
-      const diario = firstNonEmpty([
-        pickFirst(item, ["diario", "jornal", "edicao.nome", "nomeDiario", "caderno"]),
-        joinNonEmpty([
-          pickFirst(item, ["tribunal", "siglaTribunal"]),
-          pickFirst(item, ["origem", "ramoJustica"])
-        ], " • ")
-      ]);
-
-      const tribunal = firstNonEmpty([
-        pickFirst(item, [
-          "tribunal",
-          "siglaTribunal",
-          "dadosProcesso.tribunal",
-          "processo.tribunal",
-          "origem"
-        ]),
-        ""
-      ]);
-
-      const processo = normalizeNumeroProcesso(item);
-      const vara = normalizeVara(item);
-      const orgaoJulgador = normalizeOrgaoJulgador(item);
-      const classe = normalizeClasse(item);
-      const assunto = normalizeAssunto(item);
-      const partes = normalizePartes(item);
-      const advogados = normalizeAdvogados(item);
-
-      const texto = firstNonEmpty([
-        pickFirst(item, [
-          "texto",
-          "conteudo",
-          "integra",
-          "textoIntegral",
-          "textoPublicacao",
-          "publicacaoTexto",
-          "resumo",
-          "descricao"
-        ]),
-        ""
-      ]);
-
-      return {
-        _raw: item,
-        id,
-        dataPublicacao: normalizeDateString(dataPub),
-        diario: diario || "—",
-        tribunal: tribunal || "—",
-        processo: processo || "—",
-        vara: vara || "—",
-        orgaoJulgador: orgaoJulgador || "—",
-        classe: classe || "—",
-        assunto: assunto || "—",
-        partes: partes || "—",
-        advogados: advogados || "—",
-        texto: texto || "—",
-        prazoFinal: state.deadlines[id] || ""
+      var CONFIG = {
+        defaultWorkerUrl: localStorage.getItem("snap_worker_url") || "",
+        storageKeyDeadlines: "snap_tracker_deadlines_v2",
+        storageKeyWorkerUrl: "snap_worker_url",
+        actionListarPublicacoes: "listarPublicacoes",
+        actionDetalharPublicacao: "detalharPublicacao",
+        usarEndpointDetalhe: false
       };
-    });
-  }
 
-  function normalizeNumeroProcesso(item) {
-    const direct = pickFirst(item, [
-      "numeroProcesso",
-      "numProcesso",
-      "processo",
-      "cnj",
-      "processoNumero",
-      "dadosProcesso.numero",
-      "dadosProcesso.numeroProcesso",
-      "processo.numero",
-      "processo.numeroProcesso"
-    ]);
+      var state = {
+        rawItems: [],
+        filteredItems: [],
+        selectedItem: null,
+        deadlines: loadDeadlines(),
+        loading: false
+      };
 
-    if (typeof direct === "string" && direct.trim()) {
-      return direct.trim();
-    }
-
-    if (typeof direct === "number") {
-      return String(direct);
-    }
-
-    if (direct && typeof direct === "object") {
-      return firstNonEmpty([
-        direct.numero,
-        direct.numeroProcesso,
-        direct.cnj
-      ]);
-    }
-
-    return "";
-  }
-
-  function normalizeVara(item) {
-    return firstNonEmpty([
-      pickFirst(item, [
-        "vara",
-        "unidade",
-        "juizo",
-        "dadosProcesso.vara",
-        "dadosProcesso.unidade",
-        "processo.vara",
-        "processo.unidade"
-      ]),
-      joinNonEmpty([
-        pickFirst(item, ["comarca"]),
-        pickFirst(item, ["foro"])
-      ], " • ")
-    ]);
-  }
-
-  function normalizeOrgaoJulgador(item) {
-    return firstNonEmpty([
-      pickFirst(item, [
-        "orgaoJulgador",
-        "orgao",
-        "secretaria",
-        "gabinete",
-        "dadosProcesso.orgaoJulgador",
-        "processo.orgaoJulgador"
-      ]),
-      ""
-    ]);
-  }
-
-  function normalizeClasse(item) {
-    return firstNonEmpty([
-      pickFirst(item, [
-        "classe",
-        "classeProcessual",
-        "dadosProcesso.classe",
-        "processo.classe"
-      ]),
-      ""
-    ]);
-  }
-
-  function normalizeAssunto(item) {
-    const assuntoDireto = pickFirst(item, [
-      "assunto",
-      "assuntos",
-      "dadosProcesso.assunto",
-      "dadosProcesso.assuntos",
-      "processo.assunto",
-      "processo.assuntos"
-    ]);
-
-    if (Array.isArray(assuntoDireto)) {
-      return assuntoDireto.map(v => stringifyValue(v)).filter(Boolean).join(" • ");
-    }
-
-    return stringifyValue(assuntoDireto);
-  }
-
-  function normalizePartes(item) {
-    const partesDiretas = pickFirst(item, [
-      "partes",
-      "nomePartes",
-      "dadosProcesso.partes",
-      "processo.partes"
-    ]);
-
-    if (Array.isArray(partesDiretas)) {
-      return partesDiretas.map(formatParte).filter(Boolean).join(" • ");
-    }
-
-    if (partesDiretas && typeof partesDiretas === "object") {
-      const vals = Object.values(partesDiretas).flatMap(v => {
-        if (Array.isArray(v)) return v.map(formatParte);
-        return [formatParte(v)];
-      }).filter(Boolean);
-
-      if (vals.length) return vals.join(" • ");
-    }
-
-    const polos = [];
-
-    const poloAtivo = pickFirst(item, [
-      "poloAtivo",
-      "dadosProcesso.poloAtivo",
-      "processo.poloAtivo"
-    ]);
-
-    const poloPassivo = pickFirst(item, [
-      "poloPassivo",
-      "dadosProcesso.poloPassivo",
-      "processo.poloPassivo"
-    ]);
-
-    if (poloAtivo) polos.push(`Ativo: ${normalizePeopleList(poloAtivo)}`);
-    if (poloPassivo) polos.push(`Passivo: ${normalizePeopleList(poloPassivo)}`);
-
-    const avulsas = [
-      pickFirst(item, ["autor", "autora", "requerente", "exequente", "impetrante"]),
-      pickFirst(item, ["reu", "réu", "requerido", "executado", "impetrado"])
-    ].filter(Boolean);
-
-    if (avulsas.length) {
-      return [...polos, ...avulsas.map(normalizePeopleList)].filter(Boolean).join(" • ");
-    }
-
-    if (polos.length) return polos.join(" • ");
-
-    return firstNonEmpty([
-      stringifyValue(pickFirst(item, [
-        "autor",
-        "autora",
-        "reu",
-        "réu",
-        "requerente",
-        "requerido"
-      ])),
-      ""
-    ]);
-  }
-
-  function normalizeAdvogados(item) {
-    const candidatos = [
-      pickFirst(item, ["advogados", "dadosProcesso.advogados", "processo.advogados"]),
-      pickFirst(item, ["procuradores"]),
-      pickFirst(item, ["representantes"])
-    ].filter(Boolean);
-
-    const out = [];
-
-    candidatos.forEach(c => {
-      if (Array.isArray(c)) {
-        c.forEach(v => {
-          const s = formatParte(v);
-          if (s) out.push(s);
-        });
-      } else if (typeof c === "object") {
-        Object.values(c).forEach(v => {
-          if (Array.isArray(v)) {
-            v.forEach(x => {
-              const s = formatParte(x);
-              if (s) out.push(s);
-            });
-          } else {
-            const s = formatParte(v);
-            if (s) out.push(s);
-          }
-        });
-      } else {
-        const s = stringifyValue(c);
-        if (s) out.push(s);
+      function $(id) {
+        return document.getElementById(id);
       }
-    });
 
-    return [...new Set(out)].join(" • ");
-  }
+      var els = {
+        desde: $("desde"),
+        ate: $("ate"),
+        limit: $("limit"),
+        comTexto: $("comTexto"),
+        buscaLivre: $("buscaLivre"),
+        somenteComPrazo: $("somenteComPrazo"),
+        workerUrl: $("workerUrl"),
+        btnBuscar: $("btnBuscar"),
+        btnHoje: $("btnHoje"),
+        btn7dias: $("btn7dias"),
+        btn30dias: $("btn30dias"),
+        btnLimpar: $("btnLimpar"),
+        btnExportarJson: $("btnExportarJson"),
+        btnApagarPrazos: $("btnApagarPrazos"),
+        resultsBody: $("resultsBody"),
+        emptyState: $("emptyState"),
+        detailsBox: $("detailsBox"),
+        connStatus: $("connStatus"),
+        resultsCount: $("resultsCount"),
+        savedDeadlinesCount: $("savedDeadlinesCount"),
+        lastFetch: $("lastFetch"),
+        globalMessage: $("globalMessage")
+      };
 
-  function normalizePeopleList(value) {
-    if (!value) return "";
+      init();
 
-    if (Array.isArray(value)) {
-      return value.map(formatParte).filter(Boolean).join(" • ");
-    }
+      function init() {
+        els.workerUrl.value = CONFIG.defaultWorkerUrl;
+        presetLast7Days();
+        updateDashboard();
 
-    if (typeof value === "object") {
-      return Object.values(value).map(formatParte).filter(Boolean).join(" • ");
-    }
+        els.btnBuscar.addEventListener("click", handleBuscar);
+        els.btnHoje.addEventListener("click", presetToday);
+        els.btn7dias.addEventListener("click", presetLast7Days);
+        els.btn30dias.addEventListener("click", presetLast30Days);
+        els.btnLimpar.addEventListener("click", clearFilters);
+        els.btnExportarJson.addEventListener("click", exportJson);
+        els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
 
-    return stringifyValue(value);
-  }
+        els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
+        els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
+        els.workerUrl.addEventListener("change", persistWorkerUrl);
+      }
 
-  function formatParte(v) {
-    if (!v) return "";
+      function persistWorkerUrl() {
+        localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
+      }
 
-    if (typeof v === "string" || typeof v === "number") {
-      return String(v).trim();
-    }
+      function loadDeadlines() {
+        try {
+          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
+        } catch (e) {
+          return {};
+        }
+      }
 
-    if (typeof v === "object") {
-      const nome = firstNonEmpty([
-        v.nome,
-        v.nomeCompleto,
-        v.parte,
-        v.razaoSocial,
-        v.denominacao
-      ]);
+      function saveDeadlines() {
+        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
+        updateDashboard();
+      }
 
-      const tipo = firstNonEmpty([
-        v.tipo,
-        v.polo,
-        v.qualidade,
-        v.posicao
-      ]);
+      function updateDashboard() {
+        els.resultsCount.textContent = String(state.filteredItems.length || 0);
+        els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
+        els.connStatus.textContent = state.loading
+          ? "Consultando..."
+          : (state.rawItems.length ? "Conectado" : "Aguardando");
+      }
 
-      const oab = firstNonEmpty([
-        v.oab,
-        v.numeroOab
-      ]);
+      function setMessage(msg) {
+        els.globalMessage.textContent = msg;
+      }
 
-      const base = nome || stringifyValue(v);
-      const sufixo = joinNonEmpty([
-        tipo,
-        oab ? `OAB ${oab}` : ""
-      ], " • ");
+      function setLoading(on) {
+        state.loading = on;
+        els.btnBuscar.disabled = on;
+        els.btnBuscar.innerHTML = on
+          ? '<span class="loader"></span> Consultando...'
+          : "Buscar publicações";
+        updateDashboard();
+      }
 
-      return sufixo ? `${base} (${sufixo})` : base;
-    }
+      function todayStr() {
+        var d = new Date();
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + day;
+      }
 
-    return "";
-  }
+      function shiftDate(baseStr, deltaDays) {
+        var d = new Date(baseStr + "T12:00:00");
+        d.setDate(d.getDate() + deltaDays);
+        var y = d.getFullYear();
+        var m = String(d.getMonth() + 1).padStart(2, "0");
+        var day = String(d.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + day;
+      }
 
-  function pickFirst(obj, paths) {
-    for (const path of paths) {
-      const val = deepGet(obj, path);
-      if (isMeaningful(val)) return val;
-    }
-    return "";
-  }
+      function presetToday() {
+        var t = todayStr();
+        els.desde.value = t;
+        els.ate.value = t;
+      }
 
-  function deepGet(obj, path) {
-    if (!obj || !path) return undefined;
-    const keys = String(path).split(".");
-    let cur = obj;
+      function presetLast7Days() {
+        var t = todayStr();
+        els.ate.value = t;
+        els.desde.value = shiftDate(t, -7);
+      }
 
-    for (const key of keys) {
-      if (cur == null) return undefined;
-      cur = cur[key];
-    }
+      function presetLast30Days() {
+        var t = todayStr();
+        els.ate.value = t;
+        els.desde.value = shiftDate(t, -30);
+      }
 
-    return cur;
-  }
+      function clearFilters() {
+        presetLast7Days();
+        els.limit.value = "50";
+        els.comTexto.value = "true";
+        els.buscaLivre.value = "";
+        els.somenteComPrazo.value = "todos";
+        renderRows([]);
+        state.rawItems = [];
+        state.filteredItems = [];
+        state.selectedItem = null;
+        renderDetails(null);
+        updateDashboard();
+        setMessage("Filtros limpos.");
+      }
 
-  function isMeaningful(v) {
-    if (v == null) return false;
-    if (typeof v === "string") return v.trim() !== "";
-    if (Array.isArray(v)) return v.length > 0;
-    if (typeof v === "object") return Object.keys(v).length > 0;
-    return true;
-  }
+      async function handleBuscar() {
+        var workerUrl = (els.workerUrl.value || "").trim();
 
-  function stringifyValue(v) {
-    if (v == null) return "";
-    if (typeof v === "string") return v.trim();
-    if (typeof v === "number" || typeof v === "boolean") return String(v);
-    if (Array.isArray(v)) return v.map(stringifyValue).filter(Boolean).join(" • ");
-    if (typeof v === "object") {
-      return firstNonEmpty([
-        v.nome,
-        v.descricao,
-        v.texto,
-        v.valor,
-        ""
-      ]);
-    }
-    return "";
-  }
-
-  function firstNonEmpty(arr) {
-    for (const v of arr) {
-      const s = stringifyValue(v);
-      if (s) return s;
-    }
-    return "";
-  }
-
-  function joinNonEmpty(arr, sep = " ") {
-    return arr.map(stringifyValue).filter(Boolean).join(sep);
-  }
-
-  function normalizeDateString(v) {
-    if (!v) return "";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
-      const [d, m, y] = v.split("/");
-      return `${y}-${m}-${d}`;
-    }
-
-    const date = new Date(v);
-    if (Number.isNaN(date.getTime())) return String(v);
-
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
-  }
-
-  function formatDateBR(v) {
-    if (!v) return "—";
-    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
-      const [y, m, d] = v.split("-");
-      return `${d}/${m}/${y}`;
-    }
-    return v;
-  }
-
-  function applyLocalFiltersAndRender() {
-    const q = (els.buscaLivre.value || "").trim().toLowerCase();
-    const mode = els.somenteComPrazo.value;
-
-    let items = [...state.rawItems];
-
-    if (q) {
-      items = items.filter(item => {
-        const blob = [
-          item.id,
-          item.dataPublicacao,
-          item.diario,
-          item.tribunal,
-          item.processo,
-          item.vara,
-          item.orgaoJulgador,
-          item.classe,
-          item.assunto,
-          item.partes,
-          item.advogados,
-          item.texto,
-          JSON.stringify(item._raw || {})
-        ].join(" ").toLowerCase();
-
-        return blob.includes(q);
-      });
-    }
-
-    if (mode === "comPrazo") {
-      items = items.filter(item => !!state.deadlines[item.id]);
-    } else if (mode === "semPrazo") {
-      items = items.filter(item => !state.deadlines[item.id]);
-    }
-
-    state.filteredItems = items;
-    renderRows(items);
-    updateDashboard();
-  }
-
-  function renderRows(items) {
-    els.resultsBody.innerHTML = "";
-
-    if (!items.length) {
-      els.emptyState.style.display = "block";
-      return;
-    }
-
-    els.emptyState.style.display = "none";
-
-    const frag = document.createDocumentFragment();
-
-    items.forEach(item => {
-      const tr = document.createElement("tr");
-
-      const prazo = state.deadlines[item.id] || "";
-      const badgeClass = prazo ? "ok" : "warn";
-      const badgeText = prazo ? "Prazo lançado" : "Sem prazo";
-
-      const diarioTribunal = joinNonEmpty([
-        item.diario !== "—" ? item.diario : "",
-        item.tribunal !== "—" ? item.tribunal : ""
-      ], "<br>");
-
-      const processoVara = joinNonEmpty([
-        item.processo !== "—" ? item.processo : "",
-        item.vara !== "—" ? item.vara : "",
-        item.orgaoJulgador !== "—" ? item.orgaoJulgador : ""
-      ], "<br>");
-
-      tr.innerHTML = `
-        <td>
-          <div class="cell-title">${formatDateBR(item.dataPublicacao)}</div>
-          <div class="cell-sub mono">ID ${escapeHtml(item.id)}</div>
-        </td>
-
-        <td>
-          <div class="cell-title">${escapeHtml(item.diario || "—")}</div>
-          <div class="cell-sub">${escapeHtml(item.tribunal || "—")}</div>
-        </td>
-
-        <td>
-          <div class="cell-title mono">${escapeHtml(item.processo || "—")}</div>
-          <div class="cell-sub">${escapeHtml(
-            [item.vara, item.orgaoJulgador].filter(v => v && v !== "—").join(" • ") || "—"
-          )}</div>
-        </td>
-
-        <td>
-          <div class="cell-title">${escapeHtml(truncate(item.partes || "—", 180))}</div>
-          <div class="cell-sub">${escapeHtml(
-            [item.classe, item.assunto].filter(v => v && v !== "—").join(" • ") || ""
-          )}</div>
-        </td>
-
-        <td>
-          <div class="text-preview">${escapeHtml(truncate(item.texto || "—", 330))}</div>
-        </td>
-
-        <td>
-          <div style="display:grid; gap:8px;">
-            <span class="badge ${badgeClass}">${badgeText}</span>
-            <input type="date" data-deadline-id="${escapeHtml(item.id)}" value="${escapeHtmlAttr(prazo)}">
-          </div>
-        </td>
-
-        <td>
-          <div class="row-actions">
-            <button class="btn-secondary small-btn" data-detail-id="${escapeHtml(item.id)}">Ver detalhes</button>
-            <button class="btn-ghost small-btn" data-copy-id="${escapeHtml(item.id)}">Copiar texto</button>
-          </div>
-        </td>
-      `;
-
-      frag.appendChild(tr);
-    });
-
-    els.resultsBody.appendChild(frag);
-
-    els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(input => {
-      input.addEventListener("change", (e) => {
-        const id = e.target.getAttribute("data-deadline-id");
-        const value = e.target.value || "";
-
-        if (value) state.deadlines[id] = value;
-        else delete state.deadlines[id];
-
-        saveDeadlines();
-
-        state.rawItems = state.rawItems.map(i => i.id === id ? { ...i, prazoFinal: value } : i);
-        applyLocalFiltersAndRender();
-
-        setMessage(value
-          ? `Prazo salvo para a publicação ${id}.`
-          : `Prazo removido da publicação ${id}.`);
-      });
-    });
-
-    els.resultsBody.querySelectorAll("[data-detail-id]").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const id = e.target.getAttribute("data-detail-id");
-        const item = state.rawItems.find(x => x.id === id);
-        if (!item) return;
-
-        if (!CONFIG.usarEndpointDetalhe) {
-          state.selectedItem = item;
-          renderDetails(item);
+        if (!workerUrl) {
+          setMessage("Informe o endpoint do Worker.");
+          els.workerUrl.focus();
           return;
         }
 
-        await fetchAndRenderDetail(id, item);
-      });
-    });
+        persistWorkerUrl();
 
-    els.resultsBody.querySelectorAll("[data-copy-id]").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
-        const id = e.target.getAttribute("data-copy-id");
-        const item = state.rawItems.find(x => x.id === id);
-        if (!item) return;
-
-        const text = [
-          `ID: ${item.id}`,
-          `Data: ${formatDateBR(item.dataPublicacao)}`,
-          `Diário: ${item.diario || "—"}`,
-          `Tribunal: ${item.tribunal || "—"}`,
-          `Processo: ${item.processo || "—"}`,
-          `Vara: ${item.vara || "—"}`,
-          `Órgão julgador: ${item.orgaoJulgador || "—"}`,
-          `Classe: ${item.classe || "—"}`,
-          `Assunto: ${item.assunto || "—"}`,
-          `Partes: ${item.partes || "—"}`,
-          `Advogados: ${item.advogados || "—"}`,
-          `Prazo final: ${state.deadlines[item.id] || "—"}`,
-          "",
-          item.texto || ""
-        ].join("\n");
-
-        try {
-          await navigator.clipboard.writeText(text);
-          setMessage(`Texto da publicação ${id} copiado.`);
-        } catch {
-          setMessage("Não foi possível copiar para a área de transferência.");
-        }
-      });
-    });
-  }
-
-  async function fetchAndRenderDetail(id, currentItem) {
-    const workerUrl = els.workerUrl.value.trim();
-    if (!workerUrl) return;
-
-    setMessage(`Buscando detalhes da publicação ${id}...`);
-
-    try {
-      const res = await fetch(workerUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          snapAction: CONFIG.actionDetalharPublicacao,
-          idPublicacao: id,
-          comTexto: true,
-          comEdicao: true,
+        var payload = {
+          snapAction: CONFIG.actionListarPublicacoes,
+          desde: els.desde.value || undefined,
+          ate: els.ate.value || undefined,
+          limit: Number(els.limit.value || 50),
+          comTexto: els.comTexto.value === "true",
           comProcesso: true,
           comPartes: true,
           comVara: true,
           comTribunal: true,
           comOrgaoJulgador: true,
           comMetadados: true
-        })
-      });
+        };
 
-      const data = await safeJson(res);
-      if (!res.ok) {
-        throw new Error(data?.message || data?.error || `Erro HTTP ${res.status}`);
+        setLoading(true);
+        setMessage("Consultando publicações via Worker...");
+        renderRows([]);
+
+        try {
+          var res = await fetch(workerUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          var data = await safeJson(res);
+
+          if (!res.ok) {
+            throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+          }
+
+          var items = normalizeItems(data);
+          state.rawItems = items;
+          state.selectedItem = null;
+          renderDetails(null);
+          applyLocalFiltersAndRender();
+
+          els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+
+          setMessage(items.length + " publicação(ões) carregada(s).");
+        } catch (err) {
+          console.error(err);
+          state.rawItems = [];
+          state.filteredItems = [];
+          renderRows([]);
+          renderDetails(null);
+          setMessage("Falha na consulta: " + (err.message || err));
+        } finally {
+          setLoading(false);
+        }
       }
 
-      const detail = normalizeItems({
-        items: [data?.item || data?.publicacao || data]
-      })[0] || currentItem;
+      async function safeJson(res) {
+        try {
+          return await res.json();
+        } catch (e) {
+          return {};
+        }
+      }
 
-      state.selectedItem = detail;
-      renderDetails(detail);
-      setMessage(`Detalhes da publicação ${id} carregados.`);
-    } catch (err) {
-      console.error(err);
-      state.selectedItem = currentItem;
-      renderDetails(currentItem);
-      setMessage(`Falha ao detalhar a publicação ${id}. Exibindo dados já carregados.`);
-    }
-  }
+      function normalizeItems(data) {
+        var arr =
+          data && (
+            data.items ||
+            data.publicacoes ||
+            (data.data && (data.data.items || data.data.publicacoes || data.data)) ||
+            (data.result && (data.result.items || data.result.publicacoes || data.result)) ||
+            []
+          );
 
-  function renderDetails(item) {
-    if (!item) {
-      els.detailsBox.innerHTML = `<div class="details-empty">Nenhuma publicação selecionada.</div>`;
-      return;
-    }
+        if (!Array.isArray(arr)) return [];
 
-    const prazo = state.deadlines[item.id] || "—";
+        return arr.map(function (item, index) {
+          var id = String(
+            pickFirst(item, ["idPublicacao", "id", "codigo", "sequencial", "hash"]) || ("idx_" + index)
+          );
 
-    els.detailsBox.innerHTML = `
-      <div class="kv">
-        <div class="key">ID</div>
-        <div class="val mono">${escapeHtml(item.id)}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Data da publicação</div>
-        <div class="val">${escapeHtml(formatDateBR(item.dataPublicacao))}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Diário</div>
-        <div class="val">${escapeHtml(item.diario || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Tribunal</div>
-        <div class="val">${escapeHtml(item.tribunal || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Processo</div>
-        <div class="val mono">${escapeHtml(item.processo || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Vara / Unidade</div>
-        <div class="val">${escapeHtml(item.vara || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Órgão julgador</div>
-        <div class="val">${escapeHtml(item.orgaoJulgador || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Classe</div>
-        <div class="val">${escapeHtml(item.classe || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Assunto</div>
-        <div class="val">${escapeHtml(item.assunto || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Partes</div>
-        <div class="val">${escapeHtml(item.partes || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Advogados</div>
-        <div class="val">${escapeHtml(item.advogados || "—")}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Prazo final</div>
-        <div class="val">${escapeHtml(formatDateBR(prazo))}</div>
-      </div>
-      <div class="kv">
-        <div class="key">Texto</div>
-        <div class="val" style="white-space:pre-wrap;">${escapeHtml(item.texto || "—")}</div>
-      </div>
-    `;
-  }
+          var dataPub = pickFirst(item, [
+            "dataPublicacao",
+            "dataDisponibilizacao",
+            "data",
+            "publicadoEm",
+            "dtPublicacao",
+            "edicao.data",
+            "edicao.dataPublicacao"
+          ]);
 
-  function exportJson() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      total: state.filteredItems.length,
-      itens: state.filteredItems.map(item => ({
-        id: item.id,
-        dataPublicacao: item.dataPublicacao,
-        diario: item.diario,
-        tribunal: item.tribunal,
-        processo: item.processo,
-        vara: item.vara,
-        orgaoJulgador: item.orgaoJulgador,
-        classe: item.classe,
-        assunto: item.assunto,
-        partes: item.partes,
-        advogados: item.advogados,
-        texto: item.texto,
-        prazoFinal: state.deadlines[item.id] || "",
-        raw: item._raw || {}
-      }))
-    };
+          var diario = firstNonEmpty([
+            pickFirst(item, ["diario", "jornal", "edicao.nome", "nomeDiario", "caderno"]),
+            pickFirst(item, ["tribunal", "siglaTribunal", "origem"])
+          ]) || "—";
 
-    const blob = new Blob(
-      [JSON.stringify(payload, null, 2)],
-      { type: "application/json;charset=utf-8" }
-    );
+          var tribunal = firstNonEmpty([
+            pickFirst(item, ["tribunal", "siglaTribunal", "dadosProcesso.tribunal", "processo.tribunal", "origem"])
+          ]) || "—";
 
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "publicacoes-snap.json";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
+          var processo = normalizeNumeroProcesso(item) || "—";
+          var vara = normalizeVara(item) || "—";
+          var orgaoJulgador = normalizeOrgaoJulgador(item) || "—";
+          var classe = normalizeClasse(item) || "—";
+          var assunto = normalizeAssunto(item) || "—";
+          var partes = normalizePartes(item) || "—";
+          var advogados = normalizeAdvogados(item) || "—";
 
-    setMessage("Exportação concluída.");
-  }
+          var texto = firstNonEmpty([
+            pickFirst(item, [
+              "texto",
+              "conteudo",
+              "integra",
+              "textoIntegral",
+              "textoPublicacao",
+              "publicacaoTexto",
+              "resumo",
+              "descricao"
+            ])
+          ]) || "—";
 
-  function clearAllDeadlines() {
-    if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
-    state.deadlines = {};
-    saveDeadlines();
-    applyLocalFiltersAndRender();
-    renderDetails(state.selectedItem);
-    setMessage("Todos os prazos foram apagados.");
-  }
+          return {
+            _raw: item,
+            id: id,
+            dataPublicacao: normalizeDateString(dataPub),
+            diario: diario,
+            tribunal: tribunal,
+            processo: processo,
+            vara: vara,
+            orgaoJulgador: orgaoJulgador,
+            classe: classe,
+            assunto: assunto,
+            partes: partes,
+            advogados: advogados,
+            texto: texto,
+            prazoFinal: state.deadlines[id] || ""
+          };
+        });
+      }
 
-  function truncate(text, max) {
-    const s = String(text || "");
-    return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
-  }
+      function normalizeNumeroProcesso(item) {
+        var direct = pickFirst(item, [
+          "numeroProcesso",
+          "numProcesso",
+          "processo",
+          "cnj",
+          "processoNumero",
+          "dadosProcesso.numero",
+          "dadosProcesso.numeroProcesso",
+          "processo.numero",
+          "processo.numeroProcesso"
+        ]);
 
-  function escapeHtml(str) {
-    return String(str ?? "")
-      .replaceAll("&", "&amp;")
-      .replaceAll("<", "&lt;")
-      .replaceAll(">", "&gt;")
-      .replaceAll('"', "&quot;")
-      .replaceAll("'", "&#39;");
-  }
+        if (typeof direct === "string" && direct.trim()) return direct.trim();
+        if (typeof direct === "number") return String(direct);
 
-  function escapeHtmlAttr(str) {
-    return escapeHtml(str).replaceAll("`", "&#96;");
-  }
-</script>
+        if (direct && typeof direct === "object") {
+          return firstNonEmpty([direct.numero, direct.numeroProcesso, direct.cnj]);
+        }
+
+        return "";
+      }
+
+      function normalizeVara(item) {
+        return firstNonEmpty([
+          pickFirst(item, [
+            "vara",
+            "unidade",
+            "juizo",
+            "dadosProcesso.vara",
+            "dadosProcesso.unidade",
+            "processo.vara",
+            "processo.unidade"
+          ]),
+          pickFirst(item, ["comarca", "foro"])
+        ]);
+      }
+
+      function normalizeOrgaoJulgador(item) {
+        return firstNonEmpty([
+          pickFirst(item, [
+            "orgaoJulgador",
+            "orgao",
+            "secretaria",
+            "gabinete",
+            "dadosProcesso.orgaoJulgador",
+            "processo.orgaoJulgador"
+          ])
+        ]);
+      }
+
+      function normalizeClasse(item) {
+        return firstNonEmpty([
+          pickFirst(item, [
+            "classe",
+            "classeProcessual",
+            "dadosProcesso.classe",
+            "processo.classe"
+          ])
+        ]);
+      }
+
+      function normalizeAssunto(item) {
+        var assuntoDireto = pickFirst(item, [
+          "assunto",
+          "assuntos",
+          "dadosProcesso.assunto",
+          "dadosProcesso.assuntos",
+          "processo.assunto",
+          "processo.assuntos"
+        ]);
+
+        if (Array.isArray(assuntoDireto)) {
+          return assuntoDireto.map(stringifyValue).filter(Boolean).join(" • ");
+        }
+
+        return stringifyValue(assuntoDireto);
+      }
+
+      function normalizePartes(item) {
+        var partesDiretas = pickFirst(item, [
+          "partes",
+          "nomePartes",
+          "dadosProcesso.partes",
+          "processo.partes"
+        ]);
+
+        if (Array.isArray(partesDiretas)) {
+          return partesDiretas.map(formatParte).filter(Boolean).join(" • ");
+        }
+
+        if (partesDiretas && typeof partesDiretas === "object") {
+          var vals = [];
+          Object.values(partesDiretas).forEach(function (v) {
+            if (Array.isArray(v)) {
+              v.forEach(function (x) {
+                var s = formatParte(x);
+                if (s) vals.push(s);
+              });
+            } else {
+              var s2 = formatParte(v);
+              if (s2) vals.push(s2);
+            }
+          });
+          if (vals.length) return vals.join(" • ");
+        }
+
+        var poloAtivo = pickFirst(item, ["poloAtivo", "dadosProcesso.poloAtivo", "processo.poloAtivo"]);
+        var poloPassivo = pickFirst(item, ["poloPassivo", "dadosProcesso.poloPassivo", "processo.poloPassivo"]);
+        var partes = [];
+
+        if (poloAtivo) partes.push("Ativo: " + normalizePeopleList(poloAtivo));
+        if (poloPassivo) partes.push("Passivo: " + normalizePeopleList(poloPassivo));
+
+        var avulsas = [
+          pickFirst(item, ["autor", "autora", "requerente", "exequente", "impetrante"]),
+          pickFirst(item, ["reu", "réu", "requerido", "executado", "impetrado"])
+        ].filter(Boolean);
+
+        if (avulsas.length) {
+          avulsas.forEach(function (v) {
+            partes.push(normalizePeopleList(v));
+          });
+        }
+
+        return partes.filter(Boolean).join(" • ");
+      }
+
+      function normalizeAdvogados(item) {
+        var candidatos = [
+          pickFirst(item, ["advogados", "dadosProcesso.advogados", "processo.advogados"]),
+          pickFirst(item, ["procuradores"]),
+          pickFirst(item, ["representantes"])
+        ].filter(Boolean);
+
+        var out = [];
+
+        candidatos.forEach(function (c) {
+          if (Array.isArray(c)) {
+            c.forEach(function (v) {
+              var s = formatParte(v);
+              if (s) out.push(s);
+            });
+          } else if (c && typeof c === "object") {
+            Object.values(c).forEach(function (v) {
+              if (Array.isArray(v)) {
+                v.forEach(function (x) {
+                  var s = formatParte(x);
+                  if (s) out.push(s);
+                });
+              } else {
+                var s2 = formatParte(v);
+                if (s2) out.push(s2);
+              }
+            });
+          } else {
+            var s3 = stringifyValue(c);
+            if (s3) out.push(s3);
+          }
+        });
+
+        return Array.from(new Set(out)).join(" • ");
+      }
+
+      function normalizePeopleList(value) {
+        if (!value) return "";
+
+        if (Array.isArray(value)) {
+          return value.map(formatParte).filter(Boolean).join(" • ");
+        }
+
+        if (value && typeof value === "object") {
+          return Object.values(value).map(formatParte).filter(Boolean).join(" • ");
+        }
+
+        return stringifyValue(value);
+      }
+
+      function formatParte(v) {
+        if (!v) return "";
+
+        if (typeof v === "string" || typeof v === "number") return String(v).trim();
+
+        if (typeof v === "object") {
+          var nome = firstNonEmpty([v.nome, v.nomeCompleto, v.parte, v.razaoSocial, v.denominacao]);
+          var tipo = firstNonEmpty([v.tipo, v.polo, v.qualidade, v.posicao]);
+          var oab = firstNonEmpty([v.oab, v.numeroOab]);
+          var base = nome || stringifyValue(v);
+          var extra = [];
+          if (tipo) extra.push(tipo);
+          if (oab) extra.push("OAB " + oab);
+          return extra.length ? (base + " (" + extra.join(" • ") + ")") : base;
+        }
+
+        return "";
+      }
+
+      function pickFirst(obj, paths) {
+        for (var i = 0; i < paths.length; i++) {
+          var val = deepGet(obj, paths[i]);
+          if (isMeaningful(val)) return val;
+        }
+        return "";
+      }
+
+      function deepGet(obj, path) {
+        if (!obj || !path) return undefined;
+        var keys = String(path).split(".");
+        var cur = obj;
+        for (var i = 0; i < keys.length; i++) {
+          if (cur == null) return undefined;
+          cur = cur[keys[i]];
+        }
+        return cur;
+      }
+
+      function isMeaningful(v) {
+        if (v == null) return false;
+        if (typeof v === "string") return v.trim() !== "";
+        if (Array.isArray(v)) return v.length > 0;
+        if (typeof v === "object") return Object.keys(v).length > 0;
+        return true;
+      }
+
+      function stringifyValue(v) {
+        if (v == null) return "";
+        if (typeof v === "string") return v.trim();
+        if (typeof v === "number" || typeof v === "boolean") return String(v);
+        if (Array.isArray(v)) return v.map(stringifyValue).filter(Boolean).join(" • ");
+        if (typeof v === "object") {
+          return firstNonEmpty([v.nome, v.descricao, v.texto, v.valor, ""]);
+        }
+        return "";
+      }
+
+      function firstNonEmpty(arr) {
+        for (var i = 0; i < arr.length; i++) {
+          var s = stringifyValue(arr[i]);
+          if (s) return s;
+        }
+        return "";
+      }
+
+      function normalizeDateString(v) {
+        if (!v) return "";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
+          var p = v.split("/");
+          return p[2] + "-" + p[1] + "-" + p[0];
+        }
+
+        var date = new Date(v);
+        if (Number.isNaN(date.getTime())) return String(v);
+
+        var y = date.getFullYear();
+        var m = String(date.getMonth() + 1).padStart(2, "0");
+        var d = String(date.getDate()).padStart(2, "0");
+        return y + "-" + m + "-" + d;
+      }
+
+      function formatDateBR(v) {
+        if (!v) return "—";
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          var p = v.split("-");
+          return p[2] + "/" + p[1] + "/" + p[0];
+        }
+        return v;
+      }
+
+      function applyLocalFiltersAndRender() {
+        var q = (els.buscaLivre.value || "").trim().toLowerCase();
+        var mode = els.somenteComPrazo.value;
+        var items = state.rawItems.slice();
+
+        if (q) {
+          items = items.filter(function (item) {
+            var blob = [
+              item.id,
+              item.dataPublicacao,
+              item.diario,
+              item.tribunal,
+              item.processo,
+              item.vara,
+              item.orgaoJulgador,
+              item.classe,
+              item.assunto,
+              item.partes,
+              item.advogados,
+              item.texto,
+              JSON.stringify(item._raw || {})
+            ].join(" ").toLowerCase();
+
+            return blob.indexOf(q) >= 0;
+          });
+        }
+
+        if (mode === "comPrazo") {
+          items = items.filter(function (item) { return !!state.deadlines[item.id]; });
+        } else if (mode === "semPrazo") {
+          items = items.filter(function (item) { return !state.deadlines[item.id]; });
+        }
+
+        state.filteredItems = items;
+        renderRows(items);
+        updateDashboard();
+      }
+
+      function renderRows(items) {
+        els.resultsBody.innerHTML = "";
+
+        if (!items.length) {
+          els.emptyState.style.display = "block";
+          return;
+        }
+
+        els.emptyState.style.display = "none";
+
+        var frag = document.createDocumentFragment();
+
+        items.forEach(function (item) {
+          var tr = document.createElement("tr");
+          var prazo = state.deadlines[item.id] || "";
+          var badgeClass = prazo ? "ok" : "warn";
+          var badgeText = prazo ? "Prazo lançado" : "Sem prazo";
+
+          tr.innerHTML = ''
+            + '<td>'
+            + '  <div class="cell-title">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div>'
+            + '  <div class="cell-sub mono">ID ' + escapeHtml(item.id) + '</div>'
+            + '</td>'
+            + '<td>'
+            + '  <div class="cell-title">' + escapeHtml(item.diario || "—") + '</div>'
+            + '  <div class="cell-sub">' + escapeHtml(item.tribunal || "—") + '</div>'
+            + '</td>'
+            + '<td>'
+            + '  <div class="cell-title mono">' + escapeHtml(item.processo || "—") + '</div>'
+            + '  <div class="cell-sub">' + escapeHtml(([item.vara, item.orgaoJulgador].filter(Boolean).join(" • ")) || "—") + '</div>'
+            + '</td>'
+            + '<td>'
+            + '  <div class="cell-title">' + escapeHtml(truncate(item.partes || "—", 180)) + '</div>'
+            + '  <div class="cell-sub">' + escapeHtml(([item.classe, item.assunto].filter(function(v){ return v && v !== "—"; }).join(" • ")) || "") + '</div>'
+            + '</td>'
+            + '<td>'
+            + '  <div class="text-preview">' + escapeHtml(truncate(item.texto || "—", 330)) + '</div>'
+            + '</td>'
+            + '<td>'
+            + '  <div style="display:grid; gap:8px;">'
+            + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
+            + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
+            + '  </div>'
+            + '</td>'
+            + '<td>'
+            + '  <div class="row-actions">'
+            + '    <button class="btn-secondary small-btn" data-detail-id="' + escapeHtmlAttr(item.id) + '" type="button">Ver detalhes</button>'
+            + '    <button class="btn-ghost small-btn" data-copy-id="' + escapeHtmlAttr(item.id) + '" type="button">Copiar texto</button>'
+            + '  </div>'
+            + '</td>';
+
+          frag.appendChild(tr);
+        });
+
+        els.resultsBody.appendChild(frag);
+
+        els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
+          input.addEventListener("change", function (e) {
+            var id = e.target.getAttribute("data-deadline-id");
+            var value = e.target.value || "";
+
+            if (value) state.deadlines[id] = value;
+            else delete state.deadlines[id];
+
+            saveDeadlines();
+
+            state.rawItems = state.rawItems.map(function (i) {
+              return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
+            });
+
+            applyLocalFiltersAndRender();
+            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
+          });
+        });
+
+        els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
+          btn.addEventListener("click", async function (e) {
+            var id = e.target.getAttribute("data-detail-id");
+            var item = state.rawItems.find(function (x) { return x.id === id; });
+            if (!item) return;
+
+            if (!CONFIG.usarEndpointDetalhe) {
+              state.selectedItem = item;
+              renderDetails(item);
+              return;
+            }
+
+            await fetchAndRenderDetail(id, item);
+          });
+        });
+
+        els.resultsBody.querySelectorAll("[data-copy-id]").forEach(function (btn) {
+          btn.addEventListener("click", async function (e) {
+            var id = e.target.getAttribute("data-copy-id");
+            var item = state.rawItems.find(function (x) { return x.id === id; });
+            if (!item) return;
+
+            var text = [
+              "ID: " + item.id,
+              "Data: " + formatDateBR(item.dataPublicacao),
+              "Diário: " + (item.diario || "—"),
+              "Tribunal: " + (item.tribunal || "—"),
+              "Processo: " + (item.processo || "—"),
+              "Vara: " + (item.vara || "—"),
+              "Órgão julgador: " + (item.orgaoJulgador || "—"),
+              "Classe: " + (item.classe || "—"),
+              "Assunto: " + (item.assunto || "—"),
+              "Partes: " + (item.partes || "—"),
+              "Advogados: " + (item.advogados || "—"),
+              "Prazo final: " + (state.deadlines[item.id] || "—"),
+              "",
+              item.texto || ""
+            ].join("\n");
+
+            try {
+              await navigator.clipboard.writeText(text);
+              setMessage("Texto da publicação " + id + " copiado.");
+            } catch (e2) {
+              setMessage("Não foi possível copiar para a área de transferência.");
+            }
+          });
+        });
+      }
+
+      async function fetchAndRenderDetail(id, currentItem) {
+        var workerUrl = (els.workerUrl.value || "").trim();
+        if (!workerUrl) return;
+
+        setMessage("Buscando detalhes da publicação " + id + "...");
+
+        try {
+          var res = await fetch(workerUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              snapAction: CONFIG.actionDetalharPublicacao,
+              idPublicacao: id,
+              comTexto: true,
+              comEdicao: true,
+              comProcesso: true,
+              comPartes: true,
+              comVara: true,
+              comTribunal: true,
+              comOrgaoJulgador: true,
+              comMetadados: true
+            })
+          });
+
+          var data = await safeJson(res);
+          if (!res.ok) {
+            throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+          }
+
+          var detail = normalizeItems({
+            items: [data.item || data.publicacao || data]
+          })[0] || currentItem;
+
+          state.selectedItem = detail;
+          renderDetails(detail);
+          setMessage("Detalhes da publicação " + id + " carregados.");
+        } catch (err) {
+          console.error(err);
+          state.selectedItem = currentItem;
+          renderDetails(currentItem);
+          setMessage("Falha ao detalhar a publicação " + id + ". Exibindo dados já carregados.");
+        }
+      }
+
+      function renderDetails(item) {
+        if (!item) {
+          els.detailsBox.innerHTML = '<div class="details-empty">Nenhuma publicação selecionada.</div>';
+          return;
+        }
+
+        var prazo = state.deadlines[item.id] || "—";
+
+        els.detailsBox.innerHTML = ''
+          + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
+          + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
+          + '<div class="kv"><div class="key">Diário</div><div class="val">' + escapeHtml(item.diario || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Órgão julgador</div><div class="val">' + escapeHtml(item.orgaoJulgador || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Classe</div><div class="val">' + escapeHtml(item.classe || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Assunto</div><div class="val">' + escapeHtml(item.assunto || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
+          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>';
+      }
+
+      function exportJson() {
+        var payload = {
+          exportedAt: new Date().toISOString(),
+          total: state.filteredItems.length,
+          itens: state.filteredItems.map(function (item) {
+            return {
+              id: item.id,
+              dataPublicacao: item.dataPublicacao,
+              diario: item.diario,
+              tribunal: item.tribunal,
+              processo: item.processo,
+              vara: item.vara,
+              orgaoJulgador: item.orgaoJulgador,
+              classe: item.classe,
+              assunto: item.assunto,
+              partes: item.partes,
+              advogados: item.advogados,
+              texto: item.texto,
+              prazoFinal: state.deadlines[item.id] || "",
+              raw: item._raw || {}
+            };
+          })
+        };
+
+        var blob = new Blob([JSON.stringify(payload, null, 2)], {
+          type: "application/json;charset=utf-8"
+        });
+
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement("a");
+        a.href = url;
+        a.download = "publicacoes-snap.json";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        setMessage("Exportação concluída.");
+      }
+
+      function clearAllDeadlines() {
+        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+        state.deadlines = {};
+        saveDeadlines();
+        applyLocalFiltersAndRender();
+        renderDetails(state.selectedItem);
+        setMessage("Todos os prazos foram apagados.");
+      }
+
+      function truncate(text, max) {
+        var s = String(text || "");
+        return s.length > max ? s.slice(0, max).trimEnd() + "…" : s;
+      }
+
+      function escapeHtml(str) {
+        return String(str == null ? "" : str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#39;");
+      }
+
+      function escapeHtmlAttr(str) {
+        return escapeHtml(str).replace(/`/g, "&#96;");
+      }
+    })();
+  </script>
+</body>
+</html>
