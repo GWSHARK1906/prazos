@@ -33,6 +33,7 @@
     *{box-sizing:border-box}
     html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
     body{min-height:100vh}
+    body.modal-open{overflow:hidden}
 
     .app{
       width:min(1480px, calc(100% - 32px));
@@ -285,7 +286,6 @@
       background:#fcfbf8;
     }
 
-    /* linha sem efeito de intimação: fundo levemente acinzentado */
     tbody tr.sem-efeito{
       background:#f9f8f6;
       opacity:.85;
@@ -450,6 +450,60 @@
       white-space:pre-wrap;
     }
 
+    .modal-overlay{
+      position:fixed;
+      inset:0;
+      background:rgba(0,0,0,.5);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      padding:24px;
+    }
+
+    .modal-overlay.show{
+      display:flex;
+    }
+
+    .modal-panel{
+      width:min(980px, 96vw);
+      max-height:90vh;
+      overflow:auto;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:22px;
+      box-shadow:0 30px 80px rgba(0,0,0,.28);
+      padding:22px;
+    }
+
+    .modal-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:14px;
+    }
+
+    .modal-title{
+      font-size:24px;
+      font-weight:700;
+      letter-spacing:-.03em;
+      margin:0;
+    }
+
+    .modal-close{
+      min-height:42px;
+      min-width:42px;
+      padding:0;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--text);
+      font-size:26px;
+      line-height:1;
+      cursor:pointer;
+    }
+
     @keyframes spin{
       to{transform:rotate(360deg)}
     }
@@ -467,6 +521,8 @@
       .field.span-2,.field.span-3,.field.span-6{grid-column:span 1}
       .status-grid{grid-template-columns:1fr 1fr}
       .kv{grid-template-columns:1fr}
+      .modal-panel{padding:16px}
+      .modal-title{font-size:20px}
     }
   </style>
 </head>
@@ -619,10 +675,10 @@
       <div class="drawer">
         <h2>Detalhes da publicação</h2>
         <div class="muted">
-          Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo abaixo.
+          Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo em janela frontal.
         </div>
         <div class="details-box" id="detailsBox">
-          <div class="details-empty">Nenhuma publicação selecionada.</div>
+          <div class="details-empty">Os detalhes agora são exibidos em uma janela modal na frente da tela.</div>
         </div>
       </div>
 
@@ -652,6 +708,16 @@
         </div>
       </div>
     </section>
+  </div>
+
+  <div id="detailsModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
+      <div class="modal-head">
+        <h2 class="modal-title" id="detailsModalTitle">Detalhes da publicação</h2>
+        <button class="modal-close" id="btnFecharModal" type="button" aria-label="Fechar">×</button>
+      </div>
+      <div id="detailsModalContent"></div>
+    </div>
   </div>
 
   <script>
@@ -708,7 +774,10 @@
         resultsCount: $("resultsCount"),
         savedDeadlinesCount: $("savedDeadlinesCount"),
         lastFetch: $("lastFetch"),
-        globalMessage: $("globalMessage")
+        globalMessage: $("globalMessage"),
+        detailsModal: $("detailsModal"),
+        detailsModalContent: $("detailsModalContent"),
+        btnFecharModal: $("btnFecharModal")
       };
 
       init();
@@ -729,6 +798,17 @@
         els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
         els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
         els.workerUrl.addEventListener("change", persistWorkerUrl);
+
+        els.btnFecharModal.addEventListener("click", closeDetailsModal);
+        els.detailsModal.addEventListener("click", function (e) {
+          if (e.target === els.detailsModal) closeDetailsModal();
+        });
+
+        document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && els.detailsModal.classList.contains("show")) {
+            closeDetailsModal();
+          }
+        });
       }
 
       function persistWorkerUrl() {
@@ -814,7 +894,7 @@
         state.rawItems = [];
         state.filteredItems = [];
         state.selectedItem = null;
-        renderDetails(null);
+        closeDetailsModal();
         updateDashboard();
         setMessage("Filtros limpos.");
       }
@@ -864,7 +944,7 @@
           var items = normalizeItems(data);
           state.rawItems = items;
           state.selectedItem = null;
-          renderDetails(null);
+          closeDetailsModal();
           applyLocalFiltersAndRender();
 
           els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
@@ -878,7 +958,7 @@
           state.rawItems = [];
           state.filteredItems = [];
           renderRows([]);
-          renderDetails(null);
+          closeDetailsModal();
           setMessage("Falha na consulta: " + (err.message || err));
         } finally {
           setLoading(false);
@@ -893,9 +973,6 @@
         }
       }
 
-      // ── normalizeItems ──────────────────────────────────────────────────
-      // Usa diretamente os campos já processados pelo Worker.
-      // Mantém compatibilidade com o formato antigo via fallbacks.
       function normalizeItems(data) {
         var arr =
           data && (
@@ -911,7 +988,6 @@
         return arr.map(function (item, index) {
           var id = String(item.id || item.idPublicacao || item.codigo || ("idx_" + index));
 
-          // Campos entregues diretamente pelo Worker
           var dataPublicacao  = normalizeDateString(item.dataPublicacao || "");
           var tribunal        = item.tribunal  || "—";
           var processo        = item.numeroProcesso || "—";
@@ -924,7 +1000,6 @@
           var semEfeito       = item.semEfeitoIntimacao === true;
           var formato         = item.formato    || "A";
 
-          // diario = tribunal (a SNAP não entrega campo diario separado)
           var diario = tribunal;
 
           return {
@@ -1025,7 +1100,6 @@
         items.forEach(function (item) {
           var tr = document.createElement("tr");
 
-          // Classe CSS para publicações sem efeito de intimação
           if (item.semEfeitoIntimacao) {
             tr.classList.add("sem-efeito");
           }
@@ -1034,7 +1108,6 @@
           var badgeClass = prazo ? "ok" : "warn";
           var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
 
-          // Badge de tipo de ato / sem efeito
           var tipoAtoBadge = "";
           if (item.semEfeitoIntimacao) {
             tipoAtoBadge = '<span class="badge muted" style="margin-top:4px;">Sem efeito</span>';
@@ -1048,11 +1121,8 @@
             }
           }
 
-          // Coluna Processo / Vara
           var varaTexto = item.vara || "";
           var classeTexto = item.classe || "";
-
-          // Coluna Partes / Classe
           var partesTexto = item.partes || "—";
 
           tr.innerHTML = ''
@@ -1114,7 +1184,7 @@
         });
 
         els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
-          btn.addEventListener("click", async function (e) {
+          btn.addEventListener("click", function (e) {
             var id = e.target.getAttribute("data-detail-id");
             var item = state.rawItems.find(function (x) { return x.id === id; });
             if (!item) return;
@@ -1157,14 +1227,11 @@
       }
 
       function renderDetails(item) {
-        if (!item) {
-          els.detailsBox.innerHTML = '<div class="details-empty">Nenhuma publicação selecionada.</div>';
-          return;
-        }
+        if (!item) return;
 
         var prazo = state.deadlines[item.id] || "—";
 
-        els.detailsBox.innerHTML = ''
+        els.detailsModalContent.innerHTML = ''
           + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
           + '<div class="kv"><div class="key">Formato</div><div class="val">' + escapeHtml(item.formato || "—") + (item.semEfeitoIntimacao ? ' &nbsp;<span class="badge muted">Sem efeito</span>' : '') + '</div></div>'
           + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
@@ -1177,6 +1244,21 @@
           + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
           + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>';
+
+        openDetailsModal();
+      }
+
+      function openDetailsModal() {
+        els.detailsModal.classList.add("show");
+        els.detailsModal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeDetailsModal() {
+        els.detailsModal.classList.remove("show");
+        els.detailsModal.setAttribute("aria-hidden", "true");
+        els.detailsModalContent.innerHTML = "";
+        document.body.classList.remove("modal-open");
       }
 
       function exportJson() {
@@ -1223,7 +1305,11 @@
         state.deadlines = {};
         saveDeadlines();
         applyLocalFiltersAndRender();
-        renderDetails(state.selectedItem);
+        if (state.selectedItem) {
+          renderDetails(state.selectedItem);
+        } else {
+          closeDetailsModal();
+        }
         setMessage("Todos os prazos foram apagados.");
       }
 
