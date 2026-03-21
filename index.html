@@ -1296,7 +1296,10 @@
           + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
-          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>';
+          + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>'
+          + '<div style="margin-top:24px; display:flex; justify-content:flex-end;">'
+          + '<button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>'
+          + '</div>';
 
         openDetailsModal();
       }
