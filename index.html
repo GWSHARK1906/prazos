@@ -1,1 +1,826 @@
-els.desde.value = shiftDate(t, -7); } function presetLast30Days() { const t = todayStr(); els.ate.value = t; els.desde.value = shiftDate(t, -30); } function clearFilters() { presetLast7Days(); els.limit.value = "50"; els.comTexto.value = "true"; els.buscaLivre.value = ""; els.somenteComPrazo.value = "todos"; renderRows([]); state.rawItems = []; state.filteredItems = []; state.selectedItem = null; renderDetails(null); updateDashboard(); setMessage("Filtros limpos."); } async function handleBuscar() { const workerUrl = els.workerUrl.value.trim(); if (!workerUrl) { setMessage("Informe o endpoint do Worker."); els.workerUrl.focus(); return; } persistWorkerUrl(); const payload = { snapAction: CONFIG.actionListarPublicacoes, desde: els.desde.value || undefined, ate: els.ate.value || undefined, limit: Number(els.limit.value || 50), comTexto: els.comTexto.value === "true" }; setLoading(true); setMessage("Consultando publicações via Worker..."); renderRows([]); try { const res = await fetch(workerUrl, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }); const data = await safeJson(res); if (!res.ok) { throw new Error(data?.message || data?.error || Erro HTTP ${res.status}); } const items = normalizeItems(data); state.rawItems = items; state.selectedItem = null; renderDetails(null); applyLocalFiltersAndRender(); els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }); setMessage(${items.length} publicação(ões) carregada(s).); } catch (err) { console.error(err); state.rawItems = []; state.filteredItems = []; renderRows([]); renderDetails(null); setMessage(Falha na consulta: ${err.message || err}); } finally { setLoading(false); } } async function safeJson(res) { try { return await res.json(); } catch { return {}; } } function normalizeItems(data) { const arr = data?.items || data?.publicacoes || data?.data || data?.result || []; if (!Array.isArray(arr)) return []; return arr.map((item, index) => { const id = String( item.idPublicacao ?? item.id ?? item.codigo ?? idx_${index} ); const dataPub = item.dataPublicacao ?? item.data ?? item.edicao?.data ?? item.publicadoEm ?? ""; const diario = item.diario ?? item.jornal ?? item.edicao?.nome ?? item.tribunal ?? item.origem ?? ""; const processo = item.numeroProcesso ?? item.processo ?? item.numProcesso ?? ""; const vara = item.vara ?? item.orgaoJulgador ?? item.unidade ?? ""; const partes = normalizePartes(item); const texto = item.texto ?? item.conteudo ?? item.resumo ?? ""; return { _raw: item, id, dataPublicacao: normalizeDateString(dataPub), diario, processo, vara, partes, texto, prazoFinal: state.deadlines[id] || "" }; }); } function normalizePartes(item) { const candidatos = [ item.partes, item.nomePartes, item.polos, item.requerente, item.requerido, item.autor, item.reu ].filter(Boolean); if (Array.isArray(item.partes)) { return item.partes.map(v => String(v)).join(" • "); } if (typeof item.partes === "string") return item.partes; if (candidatos.length) { return candidatos .map(v => Array.isArray(v) ? v.join(" • ") : String(v)) .join(" • "); } return ""; } function normalizeDateString(v) { if (!v) return ""; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v; const date = new Date(v); if (Number.isNaN(date.getTime())) return String(v); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, "0"); const d = String(date.getDate()).padStart(2, "0"); return ${y}-${m}-${d}; } function formatDateBR(v) { if (!v) return "—"; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { const [y,m,d] = v.split("-"); return ${d}/${m}/${y}; } return v; } function applyLocalFiltersAndRender() { const q = (els.buscaLivre.value || "").trim().toLowerCase(); const mode = els.somenteComPrazo.value; let items = [...state.rawItems]; if (q) { items = items.filter(item => { const blob = [ item.id, item.dataPublicacao, item.diario, item.processo, item.vara, item.partes, item.texto ].join(" ").toLowerCase(); return blob.includes(q); }); } if (mode === "comPrazo") { items = items.filter(item => !!state.deadlines[item.id]); } else if (mode === "semPrazo") { items = items.filter(item => !state.deadlines[item.id]); } state.filteredItems = items; renderRows(items); updateDashboard(); } function renderRows(items) { els.resultsBody.innerHTML = ""; if (!items.length) { els.emptyState.style.display = "block"; return; } els.emptyState.style.display = "none"; const frag = document.createDocumentFragment(); items.forEach(item => { const tr = document.createElement("tr"); const prazo = state.deadlines[item.id] || ""; const badgeClass = prazo ? "ok" : "warn"; const badgeText = prazo ? "Prazo lançado" : "Sem prazo"; tr.innerHTML = <td> <div class="cell-title">${formatDateBR(item.dataPublicacao)}</div> <div class="cell-sub mono">ID ${escapeHtml(item.id)}</div> </td> <td> <div class="cell-title">${escapeHtml(item.diario || "—")}</div> <div class="cell-sub">${escapeHtml(item._raw?.tribunal || item._raw?.origem || "")}</div> </td> <td> <div class="cell-title mono">${escapeHtml(item.processo || "—")}</div> <div class="cell-sub">${escapeHtml(item.vara || "—")}</div> </td> <td> <div class="text-preview">${escapeHtml(truncate(item.partes || "—", 220))}</div> </td> <td> <div class="text-preview">${escapeHtml(truncate(item.texto || "—", 330))}</div> </td> <td> <div style="display:grid; gap:8px;"> <span class="badge ${badgeClass}">${badgeText}</span> <input type="date" data-deadline-id="${escapeHtml(item.id)}" value="${escapeHtmlAttr(prazo)}"> </div> </td> <td> <div class="row-actions"> <button class="btn-secondary small-btn" data-detail-id="${escapeHtml(item.id)}">Ver detalhes</button> <button class="btn-ghost small-btn" data-copy-id="${escapeHtml(item.id)}">Copiar texto</button> </div> </td> ; frag.appendChild(tr); }); els.resultsBody.appendChild(frag); els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(input => { input.addEventListener("change", (e) => { const id = e.target.getAttribute("data-deadline-id"); const value = e.target.value || ""; if (value) state.deadlines[id] = value; else delete state.deadlines[id]; saveDeadlines(); state.rawItems = state.rawItems.map(i => i.id === id ? { ...i, prazoFinal: value } : i); applyLocalFiltersAndRender(); setMessage(value ? Prazo salvo para a publicação ${id}. : Prazo removido da publicação ${id}.); }); }); els.resultsBody.querySelectorAll("[data-detail-id]").forEach(btn => { btn.addEventListener("click", async (e) => { const id = e.target.getAttribute("data-detail-id"); const item = state.rawItems.find(x => x.id === id); if (!item) return; if (!CONFIG.usarEndpointDetalhe) { state.selectedItem = item; renderDetails(item); return; } await fetchAndRenderDetail(id, item); }); }); els.resultsBody.querySelectorAll("[data-copy-id]").forEach(btn => { btn.addEventListener("click", async (e) => { const id = e.target.getAttribute("data-copy-id"); const item = state.rawItems.find(x => x.id === id); if (!item) return; const text = [ ID: ${item.id}, Data: ${formatDateBR(item.dataPublicacao)}, Diário/Tribunal: ${item.diario || "—"}, Processo: ${item.processo || "—"}, Vara: ${item.vara || "—"}, Partes: ${item.partes || "—"}, "", item.texto || "" ].join("\n"); try { await navigator.clipboard.writeText(text); setMessage(Texto da publicação ${id} copiado.); } catch { setMessage("Não foi possível copiar para a área de transferência."); } }); }); } async function fetchAndRenderDetail(id, currentItem) { const workerUrl = els.workerUrl.value.trim(); if (!workerUrl) return; setMessage(Buscando detalhes da publicação ${id}...); try { const res = await fetch(workerUrl, { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ snapAction: CONFIG.actionDetalharPublicacao, idPublicacao: id, comTexto: true, comEdicao: true }) }); const data = await safeJson(res); if (!res.ok) { throw new Error(data?.message || data?.error || Erro HTTP ${res.status}); } const detail = normalizeItems({ items: [data?.item || data?.publicacao || data] })[0] || currentItem; state.selectedItem = detail; renderDetails(detail); setMessage(Detalhes da publicação ${id} carregados.); } catch (err) { console.error(err); state.selectedItem = currentItem; renderDetails(currentItem); setMessage(Falha ao detalhar a publicação ${id}. Exibindo dados já carregados.); } } function renderDetails(item) { if (!item) { els.detailsBox.innerHTML = <div class="details-empty">Nenhuma publicação selecionada.</div>; return; } const prazo = state.deadlines[item.id] || "—"; els.detailsBox.innerHTML = <div class="kv"> <div class="key">ID</div> <div class="val mono">${escapeHtml(item.id)}</div> </div> <div class="kv"> <div class="key">Data da publicação</div> <div class="val">${escapeHtml(formatDateBR(item.dataPublicacao))}</div> </div> <div class="kv"> <div class="key">Diário / Tribunal</div> <div class="val">${escapeHtml(item.diario || "—")}</div> </div> <div class="kv"> <div class="key">Processo</div> <div class="val mono">${escapeHtml(item.processo || "—")}</div> </div> <div class="kv"> <div class="key">Vara</div> <div class="val">${escapeHtml(item.vara || "—")}</div> </div> <div class="kv"> <div class="key">Partes</div> <div class="val">${escapeHtml(item.partes || "—")}</div> </div> <div class="kv"> <div class="key">Prazo final</div> <div class="val">${escapeHtml(formatDateBR(prazo))}</div> </div> <div class="kv"> <div class="key">Texto</div> <div class="val" style="white-space:pre-wrap;">${escapeHtml(item.texto || "—")}</div> </div> ; } function exportJson() { const payload = { exportedAt: new Date().toISOString(), total: state.filteredItems.length, itens: state.filteredItems.map(item => ({ id: item.id, dataPublicacao: item.dataPublicacao, diario: item.diario, processo: item.processo, vara: item.vara, partes: item.partes, texto: item.texto, prazoFinal: state.deadlines[item.id] || "" })) }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" }); const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = "publicacoes-snap.json"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); setMessage("Exportação concluída."); } function clearAllDeadlines() { if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return; state.deadlines = {}; saveDeadlines(); applyLocalFiltersAndRender(); renderDetails(state.selectedItem); setMessage("Todos os prazos foram apagados."); } function truncate(text, max) { const s = String(text || ""); return s.length > max ? s.slice(0, max).trimEnd() + "…" : s; } function escapeHtml(str) { return String(str ?? "") .replaceAll("&", "&amp;") .replaceAll("<", "&lt;") .replaceAll(">", "&gt;") .replaceAll('"', "&quot;") .replaceAll("'", "&#39;"); } function escapeHtmlAttr(str) { return escapeHtml(str).replaceAll("", "&#96;"); } </script> </body> </html>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tracker de Prazos • SNAP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f7f5f0;--panel:#fff;--panel2:#f2eee6;--line:#ddd7ca;--line2:#c8c0b0;
+      --text:#191919;--muted:#666157;--accent:#8b1e1e;--accent2:#ba3737;--ok:#1f7a46;
+      --warn:#9a680f;--danger:#aa2b2b;--radius:18px;--shadow:0 12px 32px rgba(0,0,0,.08);
+      --sans:"Syne",system-ui,sans-serif;--mono:"DM Mono",monospace;
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:var(--sans)}
+    .app{width:min(1480px,calc(100% - 28px));margin:20px auto 36px}
+    .top{display:grid;grid-template-columns:1.1fr .9fr;gap:16px;margin-bottom:16px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+    .hero{padding:26px;background:radial-gradient(circle at top right, rgba(139,30,30,.11), transparent 28%),linear-gradient(180deg,#fff,#fbfaf7)}
+    .eyebrow{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+    h1{margin:8px 0 10px;font-size:clamp(30px,4vw,50px);line-height:1.02;letter-spacing:-.04em}
+    .hero p{margin:0;max-width:800px;color:var(--muted);line-height:1.6}
+    .quick{padding:20px;display:grid;gap:12px}
+    .grid4{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+    .mini{border:1px solid var(--line);border-radius:16px;padding:14px;background:linear-gradient(180deg,#fff,#faf8f3)}
+    .k{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+    .v{font-size:20px;font-weight:700;letter-spacing:-.03em}
+    .section{padding:18px;margin-bottom:16px}
+    .head{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+    .title{font-size:18px;font-weight:700;letter-spacing:-.03em}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    .filters{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+    .field{display:flex;flex-direction:column;gap:7px}
+    .span2{grid-column:span 2}
+    .span3{grid-column:span 3}
+    .span6{grid-column:span 6}
+    label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+    input,select,textarea{width:100%;min-height:46px;border:1px solid var(--line);border-radius:14px;background:#fff;padding:12px 14px;font:inherit;color:var(--text);outline:none;transition:.18s}
+    textarea{min-height:110px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--line2);box-shadow:0 0 0 4px rgba(139,30,30,.08)}
+    button{border:none;cursor:pointer;border-radius:14px;min-height:46px;padding:0 16px;font:700 14px var(--sans);transition:.18s}
+    .btn-primary{background:linear-gradient(180deg,var(--accent2),var(--accent));color:#fff;box-shadow:0 10px 22px rgba(139,30,30,.2)}
+    .btn-secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+    .btn-ghost{background:#fff;color:var(--text);border:1px solid var(--line)}
+    .btn-danger{background:#fff4f4;color:var(--danger);border:1px solid #efcaca}
+    .muted{color:var(--muted);line-height:1.6}
+    .foot{margin-top:10px;font-size:12px;color:var(--muted);line-height:1.6}
+    .results{overflow:hidden}
+    .results-head{padding:18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;background:linear-gradient(180deg,#fff,#fbfaf7)}
+    .table-wrap{overflow:auto}
+    table{width:100%;border-collapse:separate;border-spacing:0;min-width:1180px}
+    thead th{position:sticky;top:0;background:#faf8f3;border-bottom:1px solid var(--line);text-align:left;padding:14px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+    tbody td{padding:14px 12px;border-bottom:1px solid #eee7da;vertical-align:top;font-size:14px}
+    tbody tr:hover{background:#fcfbf8}
+    .mono{font-family:var(--mono);font-size:12px;line-height:1.55;word-break:break-word}
+    .cell-title{font-weight:700;margin-bottom:6px;line-height:1.35}
+    .cell-sub{color:var(--muted);font-size:12px;line-height:1.5}
+    .text-preview{max-width:560px;line-height:1.55;white-space:pre-wrap}
+    .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;border:1px solid var(--line);background:#fff;white-space:nowrap}
+    .ok{color:var(--ok);background:#edf8f1;border-color:#cde7d5}
+    .warn{color:var(--warn);background:#fff5e8;border-color:#ebd6ae}
+    .danger{color:var(--danger);background:#fff0f0;border-color:#eac8c8}
+    .row-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .small-btn{min-height:36px;padding:0 12px;border-radius:12px;font-size:12px}
+    .empty{padding:28px;text-align:center;color:var(--muted);display:none}
+    .bottom{display:grid;grid-template-columns:1.2fr .8fr;gap:16px;margin-top:16px}
+    .box{padding:18px}
+    .box h2{margin:0 0 10px;font-size:20px;letter-spacing:-.03em}
+    .detailbox{margin-top:12px;border:1px solid var(--line);background:#fcfbf8;border-radius:16px;padding:16px;min-height:220px}
+    .kv{display:grid;grid-template-columns:160px 1fr;gap:10px;padding:10px 0;border-bottom:1px dashed #e3ddd1}
+    .kv:last-child{border-bottom:none}
+    .key{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.1em}
+    .val{line-height:1.6;word-break:break-word}
+    .loader{width:18px;height:18px;border-radius:999px;border:2px solid rgba(255,255,255,.35);border-top-color:#fff;display:inline-block;animation:spin .8s linear infinite;vertical-align:middle}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    @media (max-width:1100px){
+      .top,.bottom{grid-template-columns:1fr}
+      .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+      .span2,.span3,.span6{grid-column:span 2}
+    }
+    @media (max-width:680px){
+      .app{width:min(100% - 16px,100%)}
+      .filters{grid-template-columns:1fr}
+      .span2,.span3,.span6{grid-column:span 1}
+      .kv{grid-template-columns:1fr}
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <section class="top">
+    <div class="card hero">
+      <div class="eyebrow">Tracker de Prazos • SNAP</div>
+      <h1>Publicações e prazos, sem expor a senha da API.</h1>
+      <p>Front alinhado ao Worker, com teste de comunicação, diagnóstico em JSON bruto e painel para registrar prazo final por publicação.</p>
+    </div>
+
+    <div class="card quick">
+      <div class="title">Painel rápido</div>
+      <div class="grid4">
+        <div class="mini">
+          <div class="k">Conexão</div>
+          <div class="v" id="connStatus">Aguardando</div>
+        </div>
+        <div class="mini">
+          <div class="k">Resultados</div>
+          <div class="v" id="resultsCount">0</div>
+        </div>
+        <div class="mini">
+          <div class="k">Prazos salvos</div>
+          <div class="v" id="savedDeadlinesCount">0</div>
+        </div>
+        <div class="mini">
+          <div class="k">Última busca</div>
+          <div class="v" id="lastFetch">—</div>
+        </div>
+      </div>
+      <div id="globalMessage" class="foot">Informe a URL do Worker, teste a comunicação e depois faça a consulta.</div>
+    </div>
+  </section>
+
+  <section class="card section">
+    <div class="head">
+      <div class="title">Filtros e diagnóstico</div>
+      <div class="actions">
+        <button class="btn-secondary" id="btnHealth">Testar Worker</button>
+        <button class="btn-primary" id="btnBuscar">Buscar publicações</button>
+        <button class="btn-secondary" id="btnHoje">Hoje</button>
+        <button class="btn-ghost" id="btn7dias">Últimos 7 dias</button>
+        <button class="btn-ghost" id="btn30dias">Últimos 30 dias</button>
+        <button class="btn-danger" id="btnLimpar">Limpar</button>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="field">
+        <label for="desde">Desde</label>
+        <input type="date" id="desde" />
+      </div>
+      <div class="field">
+        <label for="ate">Até</label>
+        <input type="date" id="ate" />
+      </div>
+      <div class="field">
+        <label for="limit">Limite</label>
+        <select id="limit">
+          <option value="25">25</option>
+          <option value="50" selected>50</option>
+          <option value="100">100</option>
+          <option value="200">200</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="comTexto">Trazer texto</label>
+        <select id="comTexto">
+          <option value="true" selected>Sim</option>
+          <option value="false">Não</option>
+        </select>
+      </div>
+      <div class="field span2">
+        <label for="buscaLivre">Filtro local por termo</label>
+        <input type="text" id="buscaLivre" placeholder="processo, parte, vara, tribunal, trecho do texto..." />
+      </div>
+      <div class="field span2">
+        <label for="somenteComPrazo">Exibição</label>
+        <select id="somenteComPrazo">
+          <option value="todos" selected>Todas as publicações</option>
+          <option value="comPrazo">Somente com prazo salvo</option>
+          <option value="semPrazo">Somente sem prazo salvo</option>
+        </select>
+      </div>
+      <div class="field span3">
+        <label for="workerUrl">Endpoint do Worker</label>
+        <input type="text" id="workerUrl" placeholder="https://seu-worker.seudominio.workers.dev" />
+      </div>
+      <div class="field">
+        <label for="actionList">Ação listagem</label>
+        <input type="text" id="actionList" value="listarPublicacoes" />
+      </div>
+      <div class="field">
+        <label for="actionHealth">Ação teste</label>
+        <input type="text" id="actionHealth" value="healthcheck" />
+      </div>
+      <div class="field span6">
+        <label for="debugJson">Última resposta bruta do Worker</label>
+        <textarea id="debugJson" placeholder="O JSON bruto da resposta aparecerá aqui..."></textarea>
+      </div>
+    </div>
+
+    <div class="foot">O front não envia senha da SNAP. A autenticação acontece dentro do Worker com secrets.</div>
+  </section>
+
+  <section class="card results">
+    <div class="results-head">
+      <div class="title">Publicações encontradas</div>
+      <div class="actions">
+        <button class="btn-secondary" id="btnExportarJson">Exportar JSON</button>
+        <button class="btn-secondary" id="btnApagarPrazos">Apagar prazos salvos</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:130px;">Data</th>
+            <th style="width:160px;">Diário / Tribunal</th>
+            <th style="width:190px;">Processo / Vara</th>
+            <th style="width:240px;">Partes</th>
+            <th>Texto</th>
+            <th style="width:180px;">Prazo</th>
+            <th style="width:180px;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="resultsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="card empty" id="emptyState">Nenhuma publicação para exibir no momento.</div>
+
+  <section class="bottom">
+    <div class="card box">
+      <h2>Detalhes da publicação</h2>
+      <div class="muted">Clique em “Ver detalhes” em uma linha.</div>
+      <div class="detailbox" id="detailsBox"><div class="muted">Nenhuma publicação selecionada.</div></div>
+    </div>
+    <div class="card box">
+      <h2>Regras</h2>
+      <div class="muted">Termo inicial considerado no fluxo operacional: dia da publicação. O prazo final continua manual, salvo em <span class="mono">localStorage</span>.</div>
+      <div class="detailbox">
+        <div class="kv"><div class="key">Segurança</div><div class="val">Senha da API não vai para o navegador.</div></div>
+        <div class="kv"><div class="key">Persistência</div><div class="val">Prazos ficam gravados no navegador.</div></div>
+        <div class="kv"><div class="key">Diagnóstico</div><div class="val">O JSON bruto da última resposta fica visível no painel de filtros.</div></div>
+        <div class="kv"><div class="key">Compatibilidade</div><div class="val">A listagem tenta aproveitar estruturas diferentes do retorno do Worker.</div></div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const STORAGE = {
+  workerUrl: 'snap_worker_url_v3',
+  deadlines: 'snap_tracker_deadlines_v3',
+  actionList: 'snap_action_list_v3',
+  actionHealth: 'snap_action_health_v3'
+};
+
+const state = {
+  rawItems: [],
+  filteredItems: [],
+  selectedItem: null,
+  deadlines: loadDeadlines(),
+  loading: false,
+  lastResponse: null,
+};
+
+const $ = (id) => document.getElementById(id);
+const els = {
+  desde: $('desde'),
+  ate: $('ate'),
+  limit: $('limit'),
+  comTexto: $('comTexto'),
+  buscaLivre: $('buscaLivre'),
+  somenteComPrazo: $('somenteComPrazo'),
+  workerUrl: $('workerUrl'),
+  actionList: $('actionList'),
+  actionHealth: $('actionHealth'),
+  debugJson: $('debugJson'),
+  btnBuscar: $('btnBuscar'),
+  btnHealth: $('btnHealth'),
+  btnHoje: $('btnHoje'),
+  btn7dias: $('btn7dias'),
+  btn30dias: $('btn30dias'),
+  btnLimpar: $('btnLimpar'),
+  btnExportarJson: $('btnExportarJson'),
+  btnApagarPrazos: $('btnApagarPrazos'),
+  resultsBody: $('resultsBody'),
+  emptyState: $('emptyState'),
+  detailsBox: $('detailsBox'),
+  connStatus: $('connStatus'),
+  resultsCount: $('resultsCount'),
+  savedDeadlinesCount: $('savedDeadlinesCount'),
+  lastFetch: $('lastFetch'),
+  globalMessage: $('globalMessage'),
+};
+
+init();
+
+function init(){
+  els.workerUrl.value = localStorage.getItem(STORAGE.workerUrl) || '';
+  els.actionList.value = localStorage.getItem(STORAGE.actionList) || 'listarPublicacoes';
+  els.actionHealth.value = localStorage.getItem(STORAGE.actionHealth) || 'healthcheck';
+  presetLast7Days();
+  bind();
+  updateDashboard();
+}
+
+function bind(){
+  els.btnBuscar.addEventListener('click', buscarPublicacoes);
+  els.btnHealth.addEventListener('click', testarWorker);
+  els.btnHoje.addEventListener('click', presetToday);
+  els.btn7dias.addEventListener('click', presetLast7Days);
+  els.btn30dias.addEventListener('click', presetLast30Days);
+  els.btnLimpar.addEventListener('click', limparTudo);
+  els.btnExportarJson.addEventListener('click', exportJson);
+  els.btnApagarPrazos.addEventListener('click', clearAllDeadlines);
+  els.buscaLivre.addEventListener('input', applyLocalFiltersAndRender);
+  els.somenteComPrazo.addEventListener('change', applyLocalFiltersAndRender);
+  els.workerUrl.addEventListener('change', persistConfig);
+  els.actionList.addEventListener('change', persistConfig);
+  els.actionHealth.addEventListener('change', persistConfig);
+}
+
+function persistConfig(){
+  localStorage.setItem(STORAGE.workerUrl, els.workerUrl.value.trim());
+  localStorage.setItem(STORAGE.actionList, els.actionList.value.trim());
+  localStorage.setItem(STORAGE.actionHealth, els.actionHealth.value.trim());
+}
+
+function loadDeadlines(){
+  try { return JSON.parse(localStorage.getItem(STORAGE.deadlines) || '{}'); } catch { return {}; }
+}
+
+function saveDeadlines(){
+  localStorage.setItem(STORAGE.deadlines, JSON.stringify(state.deadlines));
+  updateDashboard();
+}
+
+function updateDashboard(){
+  els.resultsCount.textContent = String(state.filteredItems.length || 0);
+  els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
+  els.connStatus.textContent = state.loading ? 'Consultando...' : (state.rawItems.length ? 'Conectado' : (state.lastResponse ? 'Respondendo' : 'Aguardando'));
+}
+
+function setMessage(msg){
+  els.globalMessage.textContent = msg;
+}
+
+function setLoading(on, target='buscar'){
+  state.loading = on;
+  const map = { buscar: els.btnBuscar, health: els.btnHealth };
+  Object.values(map).forEach(btn => btn.disabled = on);
+  map.buscar.innerHTML = (on && target === 'buscar') ? '<span class="loader"></span> Consultando...' : 'Buscar publicações';
+  map.health.innerHTML = (on && target === 'health') ? '<span class="loader"></span> Testando...' : 'Testar Worker';
+  updateDashboard();
+}
+
+function todayStr(){
+  return new Date().toLocaleDateString('en-CA');
+}
+
+function shiftDate(baseStr, deltaDays){
+  const d = new Date(baseStr + 'T12:00:00');
+  d.setDate(d.getDate() + deltaDays);
+  return d.toLocaleDateString('en-CA');
+}
+
+function presetToday(){
+  const t = todayStr();
+  els.desde.value = t;
+  els.ate.value = t;
+}
+
+function presetLast7Days(){
+  const t = todayStr();
+  els.ate.value = t;
+  els.desde.value = shiftDate(t, -7);
+}
+
+function presetLast30Days(){
+  const t = todayStr();
+  els.ate.value = t;
+  els.desde.value = shiftDate(t, -30);
+}
+
+function limparTudo(){
+  presetLast7Days();
+  els.limit.value = '50';
+  els.comTexto.value = 'true';
+  els.buscaLivre.value = '';
+  els.somenteComPrazo.value = 'todos';
+  els.debugJson.value = '';
+  state.rawItems = [];
+  state.filteredItems = [];
+  state.selectedItem = null;
+  state.lastResponse = null;
+  renderRows([]);
+  renderDetails(null);
+  updateDashboard();
+  setMessage('Filtros limpos.');
+}
+
+async function testarWorker(){
+  const workerUrl = requiredWorkerUrl();
+  if (!workerUrl) return;
+
+  persistConfig();
+  setLoading(true, 'health');
+  setMessage('Testando comunicação com o Worker...');
+
+  try {
+    const payload = { snapAction: els.actionHealth.value.trim() || 'healthcheck' };
+    const { res, data } = await postJson(workerUrl, payload);
+    els.debugJson.value = pretty(data);
+    state.lastResponse = data;
+    if (!res.ok) throw new Error(extractError(data, res.status));
+    setMessage('Worker respondeu normalmente.');
+  } catch (err) {
+    console.error(err);
+    setMessage(`Falha no teste: ${err.message || err}`);
+  } finally {
+    setLoading(false);
+    updateDashboard();
+  }
+}
+
+async function buscarPublicacoes(){
+  const workerUrl = requiredWorkerUrl();
+  if (!workerUrl) return;
+
+  persistConfig();
+  setLoading(true, 'buscar');
+  setMessage('Consultando publicações via Worker...');
+  renderRows([]);
+
+  try {
+    const payload = {
+      snapAction: els.actionList.value.trim() || 'listarPublicacoes',
+      desde: els.desde.value || undefined,
+      ate: els.ate.value || undefined,
+      limit: Number(els.limit.value || 50),
+      comTexto: els.comTexto.value === 'true'
+    };
+
+    const { res, data } = await postJson(workerUrl, payload);
+    els.debugJson.value = pretty(data);
+    state.lastResponse = data;
+
+    if (!res.ok) throw new Error(extractError(data, res.status));
+
+    const items = normalizeItems(data);
+    state.rawItems = items;
+    state.selectedItem = null;
+    renderDetails(null);
+    applyLocalFiltersAndRender();
+
+    els.lastFetch.textContent = new Date().toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    setMessage(`${items.length} publicação(ões) carregada(s).`);
+  } catch (err) {
+    console.error(err);
+    state.rawItems = [];
+    state.filteredItems = [];
+    renderRows([]);
+    renderDetails(null);
+    setMessage(`Falha na consulta: ${err.message || err}`);
+  } finally {
+    setLoading(false);
+  }
+}
+
+function requiredWorkerUrl(){
+  const url = els.workerUrl.value.trim();
+  if (!url) {
+    setMessage('Informe o endpoint do Worker.');
+    els.workerUrl.focus();
+    return '';
+  }
+  return url;
+}
+
+async function postJson(url, payload){
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  });
+  const data = await safeJson(res);
+  return { res, data };
+}
+
+async function safeJson(res){
+  try { return await res.json(); } catch { return {}; }
+}
+
+function extractError(data, status){
+  return data?.message || data?.error || data?.detail || `Erro HTTP ${status}`;
+}
+
+function pretty(obj){
+  try { return JSON.stringify(obj, null, 2); } catch { return String(obj); }
+}
+
+function normalizeItems(data){
+  const arr = locateBestArray(data);
+  if (!Array.isArray(arr)) return [];
+
+  return arr.map((item, index) => {
+    const id = String(first(item, ['idPublicacao','id','codigo','uuid','hash']) ?? `idx_${index}`);
+    const dataPub = first(item, ['dataPublicacao','data','publicadoEm','dtPublicacao','dataDisponibilizacao']) ?? '';
+    const diario = first(item, ['diario','jornal','tribunal','origem','nomeJornal','nomeTribunal']) ?? '';
+    const processo = first(item, ['numeroProcesso','processo','numProcesso','cnj']) ?? '';
+    const vara = first(item, ['vara','orgaoJulgador','unidade','comarca','foro']) ?? '';
+    const texto = first(item, ['texto','conteudo','resumo','publicacao','integra']) ?? '';
+
+    return {
+      _raw: item,
+      id,
+      dataPublicacao: normalizeDateString(dataPub),
+      diario: String(diario || ''),
+      processo: String(processo || ''),
+      vara: String(vara || ''),
+      partes: normalizePartes(item),
+      texto: String(texto || ''),
+      prazoFinal: state.deadlines[id] || ''
+    };
+  });
+}
+
+function locateBestArray(root){
+  const directKeys = ['items','publicacoes','data','result','results','content','lista','registros'];
+  for (const key of directKeys) {
+    if (Array.isArray(root?.[key])) return root[key];
+  }
+  if (Array.isArray(root)) return root;
+
+  let best = null;
+  walk(root, (node) => {
+    if (!best && Array.isArray(node) && node.every(v => v && typeof v === 'object')) {
+      best = node;
+    }
+  });
+
+  return best || [];
+}
+
+function walk(node, fn){
+  if (!node || typeof node !== 'object') return;
+  fn(node);
+  if (Array.isArray(node)) {
+    node.forEach(v => walk(v, fn));
+    return;
+  }
+  Object.values(node).forEach(v => walk(v, fn));
+}
+
+function first(obj, keys){
+  for (const key of keys) {
+    if (obj?.[key] !== undefined && obj?.[key] !== null && obj?.[key] !== '') {
+      return obj[key];
+    }
+  }
+  return null;
+}
+
+function normalizePartes(item){
+  const list = [
+    item.partes,
+    item.nomePartes,
+    item.polos,
+    item.requerente,
+    item.requerido,
+    item.autor,
+    item.reu
+  ].filter(v => v !== undefined && v !== null && v !== '');
+
+  if (Array.isArray(item.partes)) {
+    return item.partes.map(v => String(v)).join(' • ');
+  }
+
+  if (typeof item.partes === 'string') {
+    return item.partes;
+  }
+
+  if (list.length) {
+    return list
+      .map(v => Array.isArray(v) ? v.join(' • ') : String(v))
+      .join(' • ');
+  }
+
+  return '';
+}
+
+function normalizeDateString(v){
+  if (!v) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+  const date = new Date(v);
+  if (Number.isNaN(date.getTime())) return String(v);
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function formatDateBR(v){
+  if (!v) return '—';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const [y,m,d] = v.split('-');
+    return `${d}/${m}/${y}`;
+  }
+  return v;
+}
+
+function applyLocalFiltersAndRender(){
+  const q = (els.buscaLivre.value || '').trim().toLowerCase();
+  const mode = els.somenteComPrazo.value;
+  let items = [...state.rawItems];
+
+  if (q) {
+    items = items.filter(item => {
+      const blob = [
+        item.id,
+        item.dataPublicacao,
+        item.diario,
+        item.processo,
+        item.vara,
+        item.partes,
+        item.texto
+      ].join(' ').toLowerCase();
+      return blob.includes(q);
+    });
+  }
+
+  if (mode === 'comPrazo') {
+    items = items.filter(item => !!state.deadlines[item.id]);
+  } else if (mode === 'semPrazo') {
+    items = items.filter(item => !state.deadlines[item.id]);
+  }
+
+  state.filteredItems = items;
+  renderRows(items);
+  updateDashboard();
+}
+
+function renderRows(items){
+  els.resultsBody.innerHTML = '';
+
+  if (!items.length) {
+    els.emptyState.style.display = 'block';
+    return;
+  }
+
+  els.emptyState.style.display = 'block';
+  els.emptyState.style.display = 'none';
+
+  const frag = document.createDocumentFragment();
+
+  items.forEach(item => {
+    const tr = document.createElement('tr');
+    const prazo = state.deadlines[item.id] || '';
+    const badgeClass = prazo ? 'ok' : 'warn';
+    const badgeText = prazo ? 'Prazo lançado' : 'Sem prazo';
+
+    tr.innerHTML = `
+      <td>
+        <div class="cell-title">${formatDateBR(item.dataPublicacao)}</div>
+        <div class="cell-sub mono">ID ${escapeHtml(item.id)}</div>
+      </td>
+      <td>
+        <div class="cell-title">${escapeHtml(item.diario || '—')}</div>
+        <div class="cell-sub">${escapeHtml(item._raw?.tribunal || item._raw?.origem || '')}</div>
+      </td>
+      <td>
+        <div class="cell-title mono">${escapeHtml(item.processo || '—')}</div>
+        <div class="cell-sub">${escapeHtml(item.vara || '—')}</div>
+      </td>
+      <td>
+        <div class="text-preview">${escapeHtml(truncate(item.partes || '—', 220))}</div>
+      </td>
+      <td>
+        <div class="text-preview">${escapeHtml(truncate(item.texto || '—', 330))}</div>
+      </td>
+      <td>
+        <div style="display:grid; gap:8px;">
+          <span class="badge ${badgeClass}">${badgeText}</span>
+          <input type="date" data-deadline-id="${escapeHtml(item.id)}" value="${escapeHtmlAttr(prazo)}">
+        </div>
+      </td>
+      <td>
+        <div class="row-actions">
+          <button class="btn-secondary small-btn" data-detail-id="${escapeHtml(item.id)}">Ver detalhes</button>
+          <button class="btn-ghost small-btn" data-copy-id="${escapeHtml(item.id)}">Copiar texto</button>
+        </div>
+      </td>
+    `;
+
+    frag.appendChild(tr);
+  });
+
+  els.resultsBody.appendChild(frag);
+
+  els.resultsBody.querySelectorAll('[data-deadline-id]').forEach(input => {
+    input.addEventListener('change', (e) => {
+      const id = e.target.getAttribute('data-deadline-id');
+      const value = e.target.value || '';
+      if (value) state.deadlines[id] = value;
+      else delete state.deadlines[id];
+      saveDeadlines();
+
+      state.rawItems = state.rawItems.map(i => i.id === id ? { ...i, prazoFinal: value } : i);
+      applyLocalFiltersAndRender();
+      setMessage(value ? `Prazo salvo para a publicação ${id}.` : `Prazo removido da publicação ${id}.`);
+    });
+  });
+
+  els.resultsBody.querySelectorAll('[data-detail-id]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.getAttribute('data-detail-id');
+      const item = state.rawItems.find(x => x.id === id);
+      if (!item) return;
+      state.selectedItem = item;
+      renderDetails(item);
+    });
+  });
+
+  els.resultsBody.querySelectorAll('[data-copy-id]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const id = e.target.getAttribute('data-copy-id');
+      const item = state.rawItems.find(x => x.id === id);
+      if (!item) return;
+
+      const text = [
+        `ID: ${item.id}`,
+        `Data: ${formatDateBR(item.dataPublicacao)}`,
+        `Diário/Tribunal: ${item.diario || '—'}`,
+        `Processo: ${item.processo || '—'}`,
+        `Vara: ${item.vara || '—'}`,
+        `Partes: ${item.partes || '—'}`,
+        '',
+        item.texto || ''
+      ].join('\n');
+
+      try {
+        await navigator.clipboard.writeText(text);
+        setMessage(`Texto da publicação ${id} copiado.`);
+      } catch {
+        setMessage('Não foi possível copiar para a área de transferência.');
+      }
+    });
+  });
+}
+
+function renderDetails(item){
+  if (!item) {
+    els.detailsBox.innerHTML = `<div class="muted">Nenhuma publicação selecionada.</div>`;
+    return;
+  }
+
+  const prazo = state.deadlines[item.id] || '—';
+
+  els.detailsBox.innerHTML = `
+    <div class="kv"><div class="key">ID</div><div class="val mono">${escapeHtml(item.id)}</div></div>
+    <div class="kv"><div class="key">Data da publicação</div><div class="val">${escapeHtml(formatDateBR(item.dataPublicacao))}</div></div>
+    <div class="kv"><div class="key">Diário / Tribunal</div><div class="val">${escapeHtml(item.diario || '—')}</div></div>
+    <div class="kv"><div class="key">Processo</div><div class="val mono">${escapeHtml(item.processo || '—')}</div></div>
+    <div class="kv"><div class="key">Vara</div><div class="val">${escapeHtml(item.vara || '—')}</div></div>
+    <div class="kv"><div class="key">Partes</div><div class="val">${escapeHtml(item.partes || '—')}</div></div>
+    <div class="kv"><div class="key">Prazo final</div><div class="val">${escapeHtml(formatDateBR(prazo))}</div></div>
+    <div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">${escapeHtml(item.texto || '—')}</div></div>
+  `;
+}
+
+function exportJson(){
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    total: state.filteredItems.length,
+    itens: state.filteredItems.map(item => ({
+      id: item.id,
+      dataPublicacao: item.dataPublicacao,
+      diario: item.diario,
+      processo: item.processo,
+      vara: item.vara,
+      partes: item.partes,
+      texto: item.texto,
+      prazoFinal: state.deadlines[item.id] || ''
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'publicacoes-snap.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  setMessage('Exportação concluída.');
+}
+
+function clearAllDeadlines(){
+  if (!confirm('Deseja apagar todos os prazos salvos neste navegador?')) return;
+  state.deadlines = {};
+  saveDeadlines();
+  applyLocalFiltersAndRender();
+  renderDetails(state.selectedItem);
+  setMessage('Todos os prazos foram apagados.');
+}
+
+function truncate(text, max){
+  const s = String(text || '');
+  return s.length > max ? s.slice(0, max).trimEnd() + '…' : s;
+}
+
+function escapeHtml(str){
+  return String(str ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function escapeHtmlAttr(str){
+  return escapeHtml(str).replaceAll('`', '&#96;');
+}
+</script>
+</body>
+</html>
