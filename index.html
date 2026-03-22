@@ -759,29 +759,8 @@
   <script>
     const supabase = window.supabase.createClient(
       "https://lvvichuirvzngdudepso.supabase.co",
-      "sb_publishable_f2xgZqUvNlsGNzsdd9eU8Q_qHFVlSC7"
+      "COLE_AQUI_SUA_PUBLISHABLE_KEY"
     );
-
-    async function salvarPrazo() {
-      const titulo = document.getElementById("titulo")?.value || "";
-      const cliente = document.getElementById("cliente")?.value || "";
-
-      const { error } = await supabase
-        .from("prazos")
-        .insert([
-          {
-            titulo: titulo,
-            cliente: cliente
-          }
-        ]);
-
-      if (error) {
-        alert("Erro: " + error.message);
-        console.error(error);
-      } else {
-        alert("Salvo com sucesso");
-      }
-    }
   </script>
 
   <script>
@@ -881,6 +860,12 @@
           var btnCriar = e.target.closest("#btnCriarPrazoPublicacao");
           if (btnCriar) {
             toggleManualDeadlineForm(true);
+            return;
+          }
+
+          var btnSalvarManual = e.target.closest("#btnSalvarPrazoManual");
+          if (btnSalvarManual) {
+            salvarPrazoManual();
             return;
           }
 
@@ -1396,7 +1381,8 @@
           + '      <textarea id="tarefaPrazoManual" placeholder="Descreva a tarefa vinculada a este prazo."></textarea>'
           + '    </div>'
           + '  </div>'
-          + '  <div style="margin-top:14px; display:flex; justify-content:flex-end;">'
+          + '  <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:12px;">'
+          + '    <button type="button" id="btnSalvarPrazoManual" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Salvar</button>'
           + '    <button type="button" id="btnFecharPrazoManual" class="btn-secondary">Fechar</button>'
           + '  </div>'
           + '</div>';
@@ -1426,6 +1412,61 @@
           if (prazoFatalInput) applyDateMask(prazoFatalInput);
         } else {
           wrap.classList.remove("show");
+        }
+      }
+
+      async function salvarPrazoManual() {
+        if (!window.supabase || !supabase) {
+          alert("Supabase não carregado.");
+          return;
+        }
+
+        if (!state.selectedItem) {
+          alert("Nenhuma publicação selecionada.");
+          return;
+        }
+
+        var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
+        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
+        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
+        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
+
+        var payload = {
+          processo: state.selectedItem.processo || "",
+          orgao_julgador: state.selectedItem.vara || "",
+          partes: state.selectedItem.partes || "",
+          prazo_inicial: prazoInicial,
+          prazo_seguro: prazoSeguro,
+          prazo_fatal: prazoFatal,
+          tarefa: tarefa
+        };
+
+        var btnSalvar = document.getElementById("btnSalvarPrazoManual");
+        if (btnSalvar) {
+          btnSalvar.disabled = true;
+          btnSalvar.textContent = "Salvando...";
+        }
+
+        try {
+          var result = await supabase
+            .from("prazos")
+            .insert([payload]);
+
+          if (result.error) {
+            alert("Erro ao salvar: " + result.error.message);
+            console.error(result.error);
+            return;
+          }
+
+          alert("Prazo salvo com sucesso.");
+        } catch (err) {
+          alert("Erro ao salvar: " + (err && err.message ? err.message : "falha desconhecida"));
+          console.error(err);
+        } finally {
+          if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.textContent = "Salvar";
+          }
         }
       }
 
