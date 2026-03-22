@@ -763,8 +763,8 @@
     );
 
     async function salvarPrazo() {
-      const titulo = document.getElementById("titulo").value;
-      const cliente = document.getElementById("cliente").value;
+      const titulo = document.getElementById("titulo")?.value || "";
+      const cliente = document.getElementById("cliente")?.value || "";
 
       const { error } = await supabase
         .from("prazos")
