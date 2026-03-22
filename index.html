@@ -535,6 +535,59 @@
       grid-column:1 / -1;
     }
 
+
+    .process-deadlines-wrap{
+      margin-top:18px;
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:#fcfbf8;
+    }
+
+    .process-deadlines-title{
+      margin:0 0 14px;
+      font-size:16px;
+      font-weight:700;
+      letter-spacing:-.02em;
+    }
+
+    .process-deadlines-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .process-deadline-card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:14px;
+    }
+
+    .process-deadline-card-title{
+      font-size:14px;
+      font-weight:700;
+      margin-bottom:8px;
+      line-height:1.4;
+    }
+
+    .process-deadline-card-meta{
+      display:grid;
+      gap:6px;
+      font-size:13px;
+      color:var(--text);
+      line-height:1.5;
+    }
+
+    .process-deadlines-empty{
+      border:1px dashed var(--line-strong);
+      border-radius:14px;
+      background:#fff;
+      padding:14px;
+      color:var(--muted);
+      font-size:14px;
+      line-height:1.5;
+    }
+
     @keyframes spin{
       to{transform:rotate(360deg)}
     }
@@ -1361,6 +1414,13 @@
           + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
           + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>'
 
+          + '<div class="process-deadlines-wrap">'
+          + '  <h3 class="process-deadlines-title">Prazos do processo</h3>'
+          + '  <div id="processDeadlinesList" class="process-deadlines-list">'
+          + '    <div class="process-deadlines-empty">Carregando prazos...</div>'
+          + '  </div>'
+          + '</div>'
+
           + '<div id="deadlineManualWrap" class="deadline-manual-wrap">'
           + '  <h3 class="deadline-manual-title">Definir prazo manualmente</h3>'
           + '  <div class="deadline-manual-grid">'
@@ -1388,6 +1448,55 @@
           + '</div>';
 
         openDetailsModal();
+        carregarPrazosDoProcessoModal(item.processo || "");
+      }
+
+      async function carregarPrazosDoProcessoModal(processo) {
+        var list = document.getElementById("processDeadlinesList");
+        if (!list) return;
+
+        if (!processo) {
+          list.innerHTML = '<div class="process-deadlines-empty">Nenhum número de processo disponível para consulta.</div>';
+          return;
+        }
+
+        list.innerHTML = '<div class="process-deadlines-empty">Carregando prazos...</div>';
+
+        try {
+          var result = await supabaseClient
+            .from("prazos")
+            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa, created_at")
+            .eq("processo", processo)
+            .order("created_at", { ascending: false });
+
+          if (result.error) {
+            list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
+            console.error(result.error);
+            return;
+          }
+
+          if (!result.data || !result.data.length) {
+            list.innerHTML = '<div class="process-deadlines-empty">Nenhum prazo encontrado para este processo.</div>';
+            return;
+          }
+
+          list.innerHTML = result.data.map(function (prazo) {
+            return ''
+              + '<div class="process-deadline-card">'
+              + '  <div class="process-deadline-card-title">' + escapeHtml(prazo.tarefa || 'Prazo sem descrição') + '</div>'
+              + '  <div class="process-deadline-card-meta">'
+              + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
+              + '    <div><strong>Prazo seguro:</strong> ' + escapeHtml(prazo.prazo_seguro || '—') + '</div>'
+              + '    <div><strong>Prazo fatal:</strong> ' + escapeHtml(prazo.prazo_fatal || '—') + '</div>'
+              + '    <div><strong>Órgão julgador:</strong> ' + escapeHtml(prazo.orgao_julgador || '—') + '</div>'
+              + '    <div><strong>Partes:</strong> ' + escapeHtml(prazo.partes || '—') + '</div>'
+              + '  </div>'
+              + '</div>';
+          }).join("");
+        } catch (err) {
+          list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
+          console.error(err);
+        }
       }
 
       function toggleManualDeadlineForm(show) {
@@ -1459,6 +1568,7 @@
           }
 
           alert("Prazo salvo com sucesso.");
+          carregarPrazosDoProcessoModal(state.selectedItem.processo || "");
         } catch (err) {
           alert("Erro ao salvar: " + (err && err.message ? err.message : "falha desconhecida"));
           console.error(err);
