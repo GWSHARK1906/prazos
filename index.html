@@ -754,6 +754,36 @@
     </div>
   </div>
 
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const supabase = window.supabase.createClient(
+      "https://lvvichuirvzngdudepso.supabase.co",
+      "COLE_AQUI_SUA_PUBLISHABLE_KEY"
+    );
+
+    async function salvarPrazo() {
+      const titulo = document.getElementById("titulo").value;
+      const cliente = document.getElementById("cliente").value;
+
+      const { error } = await supabase
+        .from("prazos")
+        .insert([
+          {
+            titulo: titulo,
+            cliente: cliente
+          }
+        ]);
+
+      if (error) {
+        alert("Erro: " + error.message);
+        console.error(error);
+      } else {
+        alert("Salvo com sucesso");
+      }
+    }
+  </script>
+
   <script>
     (function () {
       "use strict";
