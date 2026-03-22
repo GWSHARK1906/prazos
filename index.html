@@ -1416,7 +1416,7 @@
       }
 
       async function salvarPrazoManual() {
-        if (!window.supabase || !supabase) {
+        if (!window.supabase || !supabaseClient) {
           alert("Supabase não carregado.");
           return;
         }
@@ -1448,7 +1448,7 @@
         }
 
         try {
-          var result = await supabase
+          var result = await supabaseClient
             .from("prazos")
             .insert([payload]);
 
