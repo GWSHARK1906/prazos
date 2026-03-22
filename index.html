@@ -1465,9 +1465,9 @@
         try {
           var result = await supabaseClient
             .from("prazos")
-            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa, created_at")
+            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa")
             .eq("processo", processo)
-            .order("created_at", { ascending: false });
+            .order("id", { ascending: false });
 
           if (result.error) {
             list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
