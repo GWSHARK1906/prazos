@@ -570,6 +570,18 @@
       line-height:1.4;
     }
 
+    .prazo-tarefa{
+      font-size:16px;
+      font-weight:800;
+      text-transform:uppercase;
+      color:#183A5A;
+      letter-spacing:.6px;
+      margin-bottom:10px;
+      padding:6px 10px;
+      border-radius:8px;
+      background:#EAF2FB;
+    }
+
     .process-deadline-card-meta{
       display:grid;
       gap:6px;
@@ -1483,7 +1495,7 @@
           list.innerHTML = result.data.map(function (prazo) {
             return ''
               + '<div class="process-deadline-card">'
-              + '  <div class="process-deadline-card-title">' + escapeHtml(prazo.tarefa || 'Prazo sem descrição') + '</div>'
+              + '  <div class="process-deadline-card-title prazo-tarefa">TAREFA: ' + escapeHtml(String(prazo.tarefa || 'Prazo sem descrição').toUpperCase()) + '</div>'
               + '  <div class="process-deadline-card-meta">'
               + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
               + '    <div><strong>Prazo seguro:</strong> ' + escapeHtml(prazo.prazo_seguro || '—') + '</div>'
