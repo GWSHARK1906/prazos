@@ -563,6 +563,53 @@
       padding:14px;
     }
 
+    .process-deadline-card-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+
+    .prazo-status-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:7px 11px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      border:1px solid transparent;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .prazo-status-badge.vencido{
+      color:var(--danger);
+      background:#fff0f0;
+      border-color:#ebc8c8;
+    }
+
+    .prazo-status-badge.proximo{
+      color:var(--warn);
+      background:#fff5e5;
+      border-color:#ecd8ad;
+    }
+
+    .prazo-status-badge.cumprido{
+      color:var(--ok);
+      background:#edf8f1;
+      border-color:#cce8d5;
+    }
+
+    .prazo-status-badge.no-prazo{
+      color:var(--muted);
+      background:#f5f3ee;
+      border-color:var(--line);
+    }
+
     .process-deadline-card-title{
       font-size:14px;
       font-weight:700;
@@ -580,55 +627,6 @@
       padding:6px 10px;
       border-radius:8px;
       background:#EAF2FB;
-    }
-
-    .process-deadline-card-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:10px;
-    }
-
-    .process-deadline-status{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-height:30px;
-      padding:6px 10px;
-      border-radius:999px;
-      font-size:11px;
-      font-weight:800;
-      letter-spacing:.08em;
-      text-transform:uppercase;
-      white-space:nowrap;
-      border:1px solid var(--line);
-      background:#f5f3ee;
-      color:var(--muted);
-    }
-
-    .process-deadline-status.vencido{
-      background:#fff0f0;
-      border-color:#ebc8c8;
-      color:var(--danger);
-    }
-
-    .process-deadline-status.proximo{
-      background:#fff5e5;
-      border-color:#ecd8ad;
-      color:var(--warn);
-    }
-
-    .process-deadline-status.cumprido{
-      background:#edf8f1;
-      border-color:#cce8d5;
-      color:var(--ok);
-    }
-
-    .process-deadline-status.no-prazo{
-      background:#eef4fa;
-      border-color:#cfe0ef;
-      color:#365c77;
     }
 
     .process-deadline-card-meta{
@@ -1546,9 +1544,9 @@
 
             return ''
               + '<div class="process-deadline-card">'
-              + '  <div class="process-deadline-card-head">'
+              + '  <div class="process-deadline-card-top">'
               + '    <div class="process-deadline-card-title prazo-tarefa">TAREFA: ' + escapeHtml(String(prazo.tarefa || 'Prazo sem descrição').toUpperCase()) + '</div>'
-              + '    <span class="process-deadline-status ' + escapeHtml(status.className) + '">' + escapeHtml(status.label) + '</span>'
+              + '    <span class="prazo-status-badge ' + escapeHtml(status.className) + '">' + escapeHtml(status.label) + '</span>'
               + '  </div>'
               + '  <div class="process-deadline-card-meta">'
               + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
@@ -1563,52 +1561,6 @@
           list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
           console.error(err);
         }
-      }
-
-      function getPrazoStatus(prazo) {
-        if (prazo && (prazo.cumprido === true || prazo.cumprido === 'true' || prazo.cumprido_em || prazo.data_cumprimento)) {
-          return { label: 'CUMPRIDO', className: 'cumprido' };
-        }
-
-        var diasRestantes = getDiasRestantesPrazoFatal(prazo && prazo.prazo_fatal);
-
-        if (diasRestantes !== null && diasRestantes < 0) {
-          return { label: 'VENCIDO', className: 'vencido' };
-        }
-
-        if (diasRestantes !== null && diasRestantes <= 3) {
-          return { label: 'PRÓXIMO DO VENCIMENTO', className: 'proximo' };
-        }
-
-        return { label: 'NO PRAZO', className: 'no-prazo' };
-      }
-
-      function getDiasRestantesPrazoFatal(prazoFatal) {
-        var prazoDate = parsePrazoDate(prazoFatal);
-        if (!prazoDate) return null;
-
-        var hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
-        var diff = prazoDate.getTime() - hoje.getTime();
-        return Math.floor(diff / 86400000);
-      }
-
-      function parsePrazoDate(value) {
-        if (!value) return null;
-
-        var str = String(value).trim();
-        var matchBr = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-        if (matchBr) {
-          return new Date(Number(matchBr[3]), Number(matchBr[2]) - 1, Number(matchBr[1]), 12, 0, 0, 0);
-        }
-
-        var matchIso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-        if (matchIso) {
-          return new Date(Number(matchIso[1]), Number(matchIso[2]) - 1, Number(matchIso[3]), 12, 0, 0, 0);
-        }
-
-        return null;
       }
 
       function toggleManualDeadlineForm(show) {
@@ -1706,6 +1658,53 @@
         var m = String(d.getMonth() + 1).padStart(2, "0");
         var day = String(d.getDate()).padStart(2, "0");
         return day + "/" + m + "/" + y;
+      }
+
+      function parsePrazoDate(value) {
+        if (!value) return null;
+
+        var s = String(value).trim();
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          var iso = s.split("-");
+          return new Date(Number(iso[0]), Number(iso[1]) - 1, Number(iso[2]), 0, 0, 0, 0);
+        }
+
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+          var br = s.split("/");
+          return new Date(Number(br[2]), Number(br[1]) - 1, Number(br[0]), 0, 0, 0, 0);
+        }
+
+        var d = new Date(s);
+        if (Number.isNaN(d.getTime())) return null;
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      }
+
+      function getPrazoStatus(prazo) {
+        if (prazo && (prazo.cumprido === true || prazo.cumprido_em || prazo.data_cumprimento)) {
+          return { className: "cumprido", label: "🟢 CUMPRIDO" };
+        }
+
+        var prazoFatal = parsePrazoDate(prazo && prazo.prazo_fatal);
+        if (!prazoFatal) {
+          return { className: "no-prazo", label: "NO PRAZO" };
+        }
+
+        var hoje = new Date();
+        hoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
+
+        var diffMs = prazoFatal.getTime() - hoje.getTime();
+        var diasRestantes = Math.floor(diffMs / 86400000);
+
+        if (diasRestantes < 0) {
+          return { className: "vencido", label: "🔴 VENCIDO" };
+        }
+
+        if (diasRestantes <= 3) {
+          return { className: "proximo", label: "🟡 PRÓXIMO DO VENCIMENTO" };
+        }
+
+        return { className: "no-prazo", label: "NO PRAZO" };
       }
 
       function openDetailsModal() {
