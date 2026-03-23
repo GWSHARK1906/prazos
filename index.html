@@ -582,6 +582,55 @@
       background:#EAF2FB;
     }
 
+    .process-deadline-card-head{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:10px;
+      margin-bottom:10px;
+    }
+
+    .process-deadline-status{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-height:30px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:800;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+      white-space:nowrap;
+      border:1px solid var(--line);
+      background:#f5f3ee;
+      color:var(--muted);
+    }
+
+    .process-deadline-status.vencido{
+      background:#fff0f0;
+      border-color:#ebc8c8;
+      color:var(--danger);
+    }
+
+    .process-deadline-status.proximo{
+      background:#fff5e5;
+      border-color:#ecd8ad;
+      color:var(--warn);
+    }
+
+    .process-deadline-status.cumprido{
+      background:#edf8f1;
+      border-color:#cce8d5;
+      color:var(--ok);
+    }
+
+    .process-deadline-status.no-prazo{
+      background:#eef4fa;
+      border-color:#cfe0ef;
+      color:#365c77;
+    }
+
     .process-deadline-card-meta{
       display:grid;
       gap:6px;
@@ -1477,7 +1526,7 @@
         try {
           var result = await supabaseClient
             .from("prazos")
-            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa")
+            .select("*")
             .eq("processo", processo)
             .order("id", { ascending: false });
 
@@ -1493,9 +1542,14 @@
           }
 
           list.innerHTML = result.data.map(function (prazo) {
+            var status = getPrazoStatus(prazo);
+
             return ''
               + '<div class="process-deadline-card">'
-              + '  <div class="process-deadline-card-title prazo-tarefa">TAREFA: ' + escapeHtml(String(prazo.tarefa || 'Prazo sem descrição').toUpperCase()) + '</div>'
+              + '  <div class="process-deadline-card-head">'
+              + '    <div class="process-deadline-card-title prazo-tarefa">TAREFA: ' + escapeHtml(String(prazo.tarefa || 'Prazo sem descrição').toUpperCase()) + '</div>'
+              + '    <span class="process-deadline-status ' + escapeHtml(status.className) + '">' + escapeHtml(status.label) + '</span>'
+              + '  </div>'
               + '  <div class="process-deadline-card-meta">'
               + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
               + '    <div><strong>Prazo seguro:</strong> ' + escapeHtml(prazo.prazo_seguro || '—') + '</div>'
@@ -1509,6 +1563,52 @@
           list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
           console.error(err);
         }
+      }
+
+      function getPrazoStatus(prazo) {
+        if (prazo && (prazo.cumprido === true || prazo.cumprido === 'true' || prazo.cumprido_em || prazo.data_cumprimento)) {
+          return { label: 'CUMPRIDO', className: 'cumprido' };
+        }
+
+        var diasRestantes = getDiasRestantesPrazoFatal(prazo && prazo.prazo_fatal);
+
+        if (diasRestantes !== null && diasRestantes < 0) {
+          return { label: 'VENCIDO', className: 'vencido' };
+        }
+
+        if (diasRestantes !== null && diasRestantes <= 3) {
+          return { label: 'PRÓXIMO DO VENCIMENTO', className: 'proximo' };
+        }
+
+        return { label: 'NO PRAZO', className: 'no-prazo' };
+      }
+
+      function getDiasRestantesPrazoFatal(prazoFatal) {
+        var prazoDate = parsePrazoDate(prazoFatal);
+        if (!prazoDate) return null;
+
+        var hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        var diff = prazoDate.getTime() - hoje.getTime();
+        return Math.floor(diff / 86400000);
+      }
+
+      function parsePrazoDate(value) {
+        if (!value) return null;
+
+        var str = String(value).trim();
+        var matchBr = str.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+        if (matchBr) {
+          return new Date(Number(matchBr[3]), Number(matchBr[2]) - 1, Number(matchBr[1]), 12, 0, 0, 0);
+        }
+
+        var matchIso = str.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (matchIso) {
+          return new Date(Number(matchIso[1]), Number(matchIso[2]) - 1, Number(matchIso[3]), 12, 0, 0, 0);
+        }
+
+        return null;
       }
 
       function toggleManualDeadlineForm(show) {
