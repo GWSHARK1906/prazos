@@ -647,6 +647,60 @@
       line-height:1.5;
     }
 
+    .prazo-anexos-wrap{
+      margin-top:12px;
+      padding-top:12px;
+      border-top:1px dashed #e3ddd1;
+      display:grid;
+      gap:8px;
+    }
+
+    .prazo-anexos-title{
+      font-size:12px;
+      text-transform:uppercase;
+      letter-spacing:.10em;
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .prazo-anexo-item{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border:1px solid var(--line);
+      border-radius:12px;
+      background:#fcfbf8;
+      flex-wrap:wrap;
+    }
+
+    .prazo-anexo-meta{
+      display:grid;
+      gap:4px;
+      min-width:0;
+    }
+
+    .prazo-anexo-nome{
+      font-size:13px;
+      font-weight:700;
+      line-height:1.4;
+      word-break:break-word;
+    }
+
+    .prazo-anexo-sub{
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.4;
+    }
+
+    .file-note{
+      margin-top:8px;
+      font-size:12px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+
     @keyframes spin{
       to{transform:rotate(360deg)}
     }
@@ -705,23 +759,6 @@
         </div>
         <div id="globalMessage" class="footer-note">
           Configure o endpoint do Worker e faça a primeira consulta.
-        </div>
-
-        <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:12px; display:grid; gap:10px;">
-          <div class="filters-title" style="font-size:15px;">Acesso</div>
-          <div class="field">
-            <label for="authEmail">E-mail</label>
-            <input type="email" id="authEmail" placeholder="seuemail@dominio.com" autocomplete="username" />
-          </div>
-          <div class="field">
-            <label for="authPassword">Senha</label>
-            <input type="password" id="authPassword" placeholder="Sua senha" autocomplete="current-password" />
-          </div>
-          <div class="actions">
-            <button class="btn-primary" id="btnLogin" type="button">Entrar</button>
-            <button class="btn-secondary" id="btnLogout" type="button">Sair</button>
-          </div>
-          <div id="authStatus" class="footer-note">Não autenticado.</div>
         </div>
       </div>
     </section>
@@ -901,6 +938,17 @@
         <textarea id="cumprimentoDescricaoInput" placeholder="Descreva a providência adotada."></textarea>
       </div>
 
+      <div class="field" style="margin-top:12px;">
+        <label for="responsavelCumprimentoInput">Responsável pelo cumprimento</label>
+        <input type="text" id="responsavelCumprimentoInput" placeholder="Informe o responsável." />
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="anexoCumprimentoInput">Anexar arquivo</label>
+        <input type="file" id="anexoCumprimentoInput" />
+        <div id="anexoCumprimentoStatus" class="file-note">Nenhum arquivo selecionado.</div>
+      </div>
+
       <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:12px;">
         <button type="button" id="btnSalvarCumprimento" class="btn-primary">Salvar cumprimento</button>
         <button type="button" id="btnCancelarCumprimento" class="btn-secondary">Cancelar</button>
@@ -933,6 +981,8 @@
         storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
+        actionUploadPrazoAnexo: "uploadPrazoAnexo",
+        actionListarPrazoAnexos: "listarPrazoAnexos",
         usarEndpointDetalhe: false
       };
 
@@ -940,9 +990,9 @@
         rawItems: [],
         filteredItems: [],
         selectedItem: null,
+        selectedPrazoForCumprimento: null,
         deadlines: loadDeadlines(),
-        loading: false,
-        currentUser: null
+        loading: false
       };
 
       function $(id) {
@@ -979,11 +1029,8 @@
         btnFecharCumprimentoModal: $("btnFecharCumprimentoModal"),
         btnCancelarCumprimento: $("btnCancelarCumprimento"),
         btnSalvarCumprimento: $("btnSalvarCumprimento"),
-        authEmail: $("authEmail"),
-        authPassword: $("authPassword"),
-        btnLogin: $("btnLogin"),
-        btnLogout: $("btnLogout"),
-        authStatus: $("authStatus")
+        anexoCumprimentoInput: $("anexoCumprimentoInput"),
+        anexoCumprimentoStatus: $("anexoCumprimentoStatus")
       };
 
       init();
@@ -995,11 +1042,8 @@
         applyDateMask(els.desde);
         applyDateMask(els.ate);
         updateDashboard();
-        initAuth();
 
         els.btnBuscar.addEventListener("click", handleBuscar);
-        els.btnLogin.addEventListener("click", handleLogin);
-        els.btnLogout.addEventListener("click", handleLogout);
         els.btnHoje.addEventListener("click", presetToday);
         els.btn7dias.addEventListener("click", presetLast7Days);
         els.btn30dias.addEventListener("click", presetLast30Days);
@@ -1019,6 +1063,16 @@
         els.btnFecharCumprimentoModal.addEventListener("click", closeCumprimentoModal);
         els.btnCancelarCumprimento.addEventListener("click", closeCumprimentoModal);
         els.btnSalvarCumprimento.addEventListener("click", salvarCumprimentoPrazo);
+        if (els.anexoCumprimentoInput) {
+          els.anexoCumprimentoInput.addEventListener("change", function () {
+            var file = els.anexoCumprimentoInput.files && els.anexoCumprimentoInput.files[0];
+            if (els.anexoCumprimentoStatus) {
+              els.anexoCumprimentoStatus.textContent = file
+                ? ("Arquivo selecionado: " + file.name)
+                : "Nenhum arquivo selecionado.";
+            }
+          });
+        }
         els.cumprimentoModal.addEventListener("click", function (e) {
           if (e.target === els.cumprimentoModal) closeCumprimentoModal();
         });
@@ -1055,7 +1109,12 @@
 
           var btnCumprirPrazo = e.target.closest("[data-cumprir-prazo-id]");
           if (btnCumprirPrazo) {
-            openCumprimentoModal(btnCumprirPrazo.getAttribute("data-cumprir-prazo-id"));
+            openCumprimentoModal({
+              prazoId: btnCumprirPrazo.getAttribute("data-cumprir-prazo-id"),
+              processo: btnCumprirPrazo.getAttribute("data-processo") || "",
+              cliente: btnCumprirPrazo.getAttribute("data-cliente") || "",
+              tarefa: btnCumprirPrazo.getAttribute("data-tarefa") || ""
+            });
           }
         });
       }
@@ -1083,88 +1142,6 @@
         els.connStatus.textContent = state.loading
           ? "Consultando..."
           : (state.rawItems.length ? "Conectado" : "Aguardando");
-      }
-
-      async function initAuth() {
-        try {
-          var result = await supabaseClient.auth.getUser();
-          state.currentUser = result && result.data ? result.data.user : null;
-          renderAuthState();
-        } catch (e) {
-          state.currentUser = null;
-          renderAuthState();
-        }
-
-        supabaseClient.auth.onAuthStateChange(function (event, session) {
-          state.currentUser = session && session.user ? session.user : null;
-          renderAuthState();
-        });
-      }
-
-      function renderAuthState() {
-        if (!els.authStatus) return;
-
-        if (state.currentUser && state.currentUser.email) {
-          els.authStatus.textContent = 'Autenticado: ' + state.currentUser.email;
-          if (els.authEmail) els.authEmail.value = state.currentUser.email;
-          if (els.authPassword) els.authPassword.value = '';
-        } else {
-          els.authStatus.textContent = 'Não autenticado.';
-        }
-      }
-
-      async function handleLogin() {
-        var email = els.authEmail ? els.authEmail.value.trim() : '';
-        var password = els.authPassword ? els.authPassword.value : '';
-
-        if (!email || !password) {
-          alert('Informe e-mail e senha.');
-          return;
-        }
-
-        els.btnLogin.disabled = true;
-        els.btnLogin.textContent = 'Entrando...';
-
-        try {
-          var result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
-
-          if (result.error) {
-            alert('Erro no login: ' + result.error.message);
-            return;
-          }
-
-          state.currentUser = result.data && result.data.user ? result.data.user : null;
-          renderAuthState();
-          setMessage('Login realizado com sucesso.');
-        } catch (err) {
-          alert('Erro no login: ' + (err && err.message ? err.message : 'falha desconhecida'));
-        } finally {
-          els.btnLogin.disabled = false;
-          els.btnLogin.textContent = 'Entrar';
-        }
-      }
-
-      async function handleLogout() {
-        els.btnLogout.disabled = true;
-        els.btnLogout.textContent = 'Saindo...';
-
-        try {
-          var result = await supabaseClient.auth.signOut();
-          if (result.error) {
-            alert('Erro ao sair: ' + result.error.message);
-            return;
-          }
-
-          state.currentUser = null;
-          renderAuthState();
-          if (els.authPassword) els.authPassword.value = '';
-          setMessage('Logout realizado com sucesso.');
-        } catch (err) {
-          alert('Erro ao sair: ' + (err && err.message ? err.message : 'falha desconhecida'));
-        } finally {
-          els.btnLogout.disabled = false;
-          els.btnLogout.textContent = 'Sair';
-        }
       }
 
       function setMessage(msg) {
@@ -1710,11 +1687,19 @@
               + '    <div><strong>Partes:</strong> ' + escapeHtml(prazo.partes || '—') + '</div>'
               + (prazo.cumprido ? '    <div><strong>Cumprido em:</strong> ' + escapeHtml(formatDateBR(prazo.cumprido_em || '')) + '</div>' : '')
               + (prazo.cumprido ? '    <div><strong>Providência adotada:</strong> ' + escapeHtml(prazo.cumprimento_descricao || '—') + '</div>' : '')
-              + (prazo.cumprido ? '    <div><strong>Responsável pelo cumprimento:</strong> ' + escapeHtml(prazo.fulfilled_by || '—') + '</div>' : '')
-              + (!prazo.cumprido ? '    <div style="margin-top:10px;"><button type="button" class="btn-primary small-btn" data-cumprir-prazo-id="' + escapeHtmlAttr(String(prazo.id)) + '">CUMPRIR PRAZO</button></div>' : '')
+              + (prazo.cumprido ? '    <div><strong>Responsável pelo cumprimento:</strong> ' + escapeHtml(prazo.responsavel_cumprimento || '—') + '</div>' : '')
+              + (!prazo.cumprido ? '    <div style="margin-top:10px;"><button type="button" class="btn-primary small-btn" data-cumprir-prazo-id="' + escapeHtmlAttr(String(prazo.id)) + '" data-processo="' + escapeHtmlAttr(String(prazo.processo || processo || '')) + '" data-cliente="' + escapeHtmlAttr(String(prazo.cliente || '')) + '" data-tarefa="' + escapeHtmlAttr(String(prazo.tarefa || '')) + '">CUMPRIR PRAZO</button></div>' : '')
+              + '    <div class="prazo-anexos-wrap">'
+              + '      <div class="prazo-anexos-title">Anexos</div>'
+              + '      <div id="prazoAnexos-' + escapeHtmlAttr(String(prazo.id)) + '"><div class="process-deadlines-empty">Carregando anexos...</div></div>'
+              + '    </div>'
               + '  </div>'
               + '</div>';
           }).join("");
+
+          result.data.forEach(function (prazo) {
+            carregarAnexosPrazo(String(prazo.id));
+          });
         } catch (err) {
           list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
           console.error(err);
@@ -1757,14 +1742,6 @@
           return;
         }
 
-        var authResult = await supabaseClient.auth.getUser();
-        var authUser = authResult && authResult.data ? authResult.data.user : null;
-
-        if (!authUser) {
-          alert("Usuário não autenticado.");
-          return;
-        }
-
         var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
         var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
         var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
@@ -1777,9 +1754,7 @@
           prazo_inicial: prazoInicial,
           prazo_seguro: prazoSeguro,
           prazo_fatal: prazoFatal,
-          tarefa: tarefa,
-          created_by: authUser.id,
-          created_at: new Date().toISOString()
+          tarefa: tarefa
         };
 
         var btnSalvar = document.getElementById("btnSalvarPrazoManual");
@@ -1875,16 +1850,27 @@
         return { className: "no-prazo", label: "NO PRAZO" };
       }
 
-      function openCumprimentoModal(prazoId) {
-        if (!prazoId) return;
+      function openCumprimentoModal(meta) {
+        if (!meta || !meta.prazoId) return;
 
         var inputData = $("cumpridoEmInput");
         var inputDescricao = $("cumprimentoDescricaoInput");
+        var inputResponsavel = $("responsavelCumprimentoInput");
 
         if (inputData) inputData.value = new Date().toISOString().slice(0, 10);
         if (inputDescricao) inputDescricao.value = "";
+        if (inputResponsavel) inputResponsavel.value = "";
+        if (els.anexoCumprimentoInput) els.anexoCumprimentoInput.value = "";
+        if (els.anexoCumprimentoStatus) els.anexoCumprimentoStatus.textContent = "Nenhum arquivo selecionado.";
 
-        els.cumprimentoModal.setAttribute("data-prazo-id", String(prazoId));
+        state.selectedPrazoForCumprimento = {
+          prazoId: String(meta.prazoId),
+          processo: meta.processo || (state.selectedItem ? (state.selectedItem.processo || "") : ""),
+          cliente: meta.cliente || "",
+          tarefa: meta.tarefa || ""
+        };
+
+        els.cumprimentoModal.setAttribute("data-prazo-id", String(meta.prazoId));
         els.cumprimentoModal.classList.add("show");
         els.cumprimentoModal.setAttribute("aria-hidden", "false");
         document.body.classList.add("modal-open");
@@ -1894,6 +1880,9 @@
         els.cumprimentoModal.classList.remove("show");
         els.cumprimentoModal.setAttribute("aria-hidden", "true");
         els.cumprimentoModal.removeAttribute("data-prazo-id");
+        state.selectedPrazoForCumprimento = null;
+        if (els.anexoCumprimentoInput) els.anexoCumprimentoInput.value = "";
+        if (els.anexoCumprimentoStatus) els.anexoCumprimentoStatus.textContent = "Nenhum arquivo selecionado.";
         if (!els.detailsModal.classList.contains("show")) {
           document.body.classList.remove("modal-open");
         }
@@ -1903,22 +1892,16 @@
         var prazoId = els.cumprimentoModal.getAttribute("data-prazo-id");
         var cumpridoEm = $("cumpridoEmInput") ? $("cumpridoEmInput").value.trim() : "";
         var cumprimentoDescricao = $("cumprimentoDescricaoInput") ? $("cumprimentoDescricaoInput").value.trim() : "";
+        var responsavelCumprimento = $("responsavelCumprimentoInput") ? $("responsavelCumprimentoInput").value.trim() : "";
+        var anexoArquivo = els.anexoCumprimentoInput && els.anexoCumprimentoInput.files ? els.anexoCumprimentoInput.files[0] : null;
 
         if (!prazoId) {
           alert("Prazo não identificado.");
           return;
         }
 
-        if (!cumpridoEm || !cumprimentoDescricao) {
-          alert("Preencha data do cumprimento e providência adotada.");
-          return;
-        }
-
-        var authResult = await supabaseClient.auth.getUser();
-        var authUser = authResult && authResult.data ? authResult.data.user : null;
-
-        if (!authUser) {
-          alert("Usuário não autenticado.");
+        if (!cumpridoEm || !cumprimentoDescricao || !responsavelCumprimento) {
+          alert("Preencha data do cumprimento, providência adotada e responsável.");
           return;
         }
 
@@ -1932,8 +1915,7 @@
               cumprido: true,
               cumprido_em: cumpridoEm,
               cumprimento_descricao: cumprimentoDescricao,
-              fulfilled_by: authUser.id,
-              fulfilled_at: new Date().toISOString()
+              responsavel_cumprimento: responsavelCumprimento
             })
             .eq("id", prazoId);
 
@@ -1943,9 +1925,19 @@
             return;
           }
 
+          if (anexoArquivo) {
+            await uploadPrazoAnexoArquivo(anexoArquivo, {
+              prazoId: prazoId,
+              processo: state.selectedPrazoForCumprimento ? (state.selectedPrazoForCumprimento.processo || "") : "",
+              cliente: state.selectedPrazoForCumprimento ? (state.selectedPrazoForCumprimento.cliente || "") : "",
+              enviadoPor: responsavelCumprimento,
+              observacoes: cumprimentoDescricao
+            });
+          }
+
           closeCumprimentoModal();
           await carregarPrazosDoProcessoModal(state.selectedItem ? (state.selectedItem.processo || "") : "");
-          setMessage("Cumprimento do prazo salvo com sucesso.");
+          setMessage(anexoArquivo ? "Cumprimento do prazo e anexo salvos com sucesso." : "Cumprimento do prazo salvo com sucesso.");
         } catch (err) {
           alert("Erro ao salvar cumprimento: " + (err && err.message ? err.message : "falha desconhecida"));
           console.error(err);
@@ -1968,6 +1960,99 @@
         if (!els.cumprimentoModal.classList.contains("show")) {
           document.body.classList.remove("modal-open");
         }
+      }
+
+
+      async function fetchWorkerJson(payload) {
+        var workerUrl = (els.workerUrl.value || CONFIG.defaultWorkerUrl || "").trim();
+        if (!workerUrl) {
+          throw new Error("Endpoint do Worker não informado.");
+        }
+
+        var res = await fetch(workerUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        var data = await safeJson(res);
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+        }
+
+        return data;
+      }
+
+      async function uploadPrazoAnexoArquivo(file, meta) {
+        if (!file) return null;
+
+        var workerUrl = (els.workerUrl.value || CONFIG.defaultWorkerUrl || "").trim();
+        if (!workerUrl) {
+          throw new Error("Endpoint do Worker não informado.");
+        }
+
+        var formData = new FormData();
+        formData.append("snapAction", CONFIG.actionUploadPrazoAnexo);
+        formData.append("prazoId", meta && meta.prazoId ? meta.prazoId : "");
+        formData.append("processo", meta && meta.processo ? meta.processo : "");
+        formData.append("cliente", meta && meta.cliente ? meta.cliente : "");
+        formData.append("enviadoPor", meta && meta.enviadoPor ? meta.enviadoPor : "");
+        formData.append("observacoes", meta && meta.observacoes ? meta.observacoes : "");
+        formData.append("arquivo", file);
+
+        var res = await fetch(workerUrl, {
+          method: "POST",
+          body: formData
+        });
+
+        var data = await safeJson(res);
+        if (!res.ok || (data && data.ok === false)) {
+          throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+        }
+
+        return data;
+      }
+
+      async function carregarAnexosPrazo(prazoId) {
+        var target = document.getElementById("prazoAnexos-" + prazoId);
+        if (!target || !prazoId) return;
+
+        target.innerHTML = '<div class="process-deadlines-empty">Carregando anexos...</div>';
+
+        try {
+          var data = await fetchWorkerJson({
+            snapAction: CONFIG.actionListarPrazoAnexos,
+            prazoId: prazoId
+          });
+
+          var anexos = Array.isArray(data.anexos) ? data.anexos : [];
+          if (!anexos.length) {
+            target.innerHTML = '<div class="process-deadlines-empty">Nenhum anexo vinculado a este prazo.</div>';
+            return;
+          }
+
+          target.innerHTML = anexos.map(function (anexo) {
+            return ''
+              + '<div class="prazo-anexo-item">'
+              + '  <div class="prazo-anexo-meta">'
+              + '    <div class="prazo-anexo-nome">' + escapeHtml(anexo.nome_original || anexo.nome_arquivo || 'Arquivo') + '</div>'
+              + '    <div class="prazo-anexo-sub">Enviado por: ' + escapeHtml(anexo.enviado_por || '—') + ' • ' + escapeHtml(formatBytes(anexo.tamanho_bytes)) + '</div>'
+              + '  </div>'
+              + '  <div><a class="btn-secondary small-btn" href="' + escapeHtmlAttr(anexo.signed_url || '#') + '" target="_blank" rel="noopener noreferrer">Abrir anexo</a></div>'
+              + '</div>';
+          }).join('');
+        } catch (err) {
+          target.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar anexos.</div>';
+          console.error(err);
+        }
+      }
+
+      function formatBytes(bytes) {
+        var size = Number(bytes || 0);
+        if (!size) return '0 B';
+        if (size < 1024) return size + ' B';
+        if (size < 1024 * 1024) return (size / 1024).toFixed(1).replace('.0', '') + ' KB';
+        return (size / (1024 * 1024)).toFixed(1).replace('.0', '') + ' MB';
       }
 
       function exportJson() {
