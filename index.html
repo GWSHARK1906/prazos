@@ -706,6 +706,23 @@
         <div id="globalMessage" class="footer-note">
           Configure o endpoint do Worker e faça a primeira consulta.
         </div>
+
+        <div style="margin-top:10px; border-top:1px solid var(--line); padding-top:12px; display:grid; gap:10px;">
+          <div class="filters-title" style="font-size:15px;">Acesso</div>
+          <div class="field">
+            <label for="authEmail">E-mail</label>
+            <input type="email" id="authEmail" placeholder="seuemail@dominio.com" autocomplete="username" />
+          </div>
+          <div class="field">
+            <label for="authPassword">Senha</label>
+            <input type="password" id="authPassword" placeholder="Sua senha" autocomplete="current-password" />
+          </div>
+          <div class="actions">
+            <button class="btn-primary" id="btnLogin" type="button">Entrar</button>
+            <button class="btn-secondary" id="btnLogout" type="button">Sair</button>
+          </div>
+          <div id="authStatus" class="footer-note">Não autenticado.</div>
+        </div>
       </div>
     </section>
 
@@ -884,7 +901,6 @@
         <textarea id="cumprimentoDescricaoInput" placeholder="Descreva a providência adotada."></textarea>
       </div>
 
-
       <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:12px;">
         <button type="button" id="btnSalvarCumprimento" class="btn-primary">Salvar cumprimento</button>
         <button type="button" id="btnCancelarCumprimento" class="btn-secondary">Cancelar</button>
@@ -925,7 +941,8 @@
         filteredItems: [],
         selectedItem: null,
         deadlines: loadDeadlines(),
-        loading: false
+        loading: false,
+        currentUser: null
       };
 
       function $(id) {
@@ -961,7 +978,12 @@
         cumprimentoModal: $("cumprimentoModal"),
         btnFecharCumprimentoModal: $("btnFecharCumprimentoModal"),
         btnCancelarCumprimento: $("btnCancelarCumprimento"),
-        btnSalvarCumprimento: $("btnSalvarCumprimento")
+        btnSalvarCumprimento: $("btnSalvarCumprimento"),
+        authEmail: $("authEmail"),
+        authPassword: $("authPassword"),
+        btnLogin: $("btnLogin"),
+        btnLogout: $("btnLogout"),
+        authStatus: $("authStatus")
       };
 
       init();
@@ -973,8 +995,11 @@
         applyDateMask(els.desde);
         applyDateMask(els.ate);
         updateDashboard();
+        initAuth();
 
         els.btnBuscar.addEventListener("click", handleBuscar);
+        els.btnLogin.addEventListener("click", handleLogin);
+        els.btnLogout.addEventListener("click", handleLogout);
         els.btnHoje.addEventListener("click", presetToday);
         els.btn7dias.addEventListener("click", presetLast7Days);
         els.btn30dias.addEventListener("click", presetLast30Days);
@@ -1058,6 +1083,88 @@
         els.connStatus.textContent = state.loading
           ? "Consultando..."
           : (state.rawItems.length ? "Conectado" : "Aguardando");
+      }
+
+      async function initAuth() {
+        try {
+          var result = await supabaseClient.auth.getUser();
+          state.currentUser = result && result.data ? result.data.user : null;
+          renderAuthState();
+        } catch (e) {
+          state.currentUser = null;
+          renderAuthState();
+        }
+
+        supabaseClient.auth.onAuthStateChange(function (event, session) {
+          state.currentUser = session && session.user ? session.user : null;
+          renderAuthState();
+        });
+      }
+
+      function renderAuthState() {
+        if (!els.authStatus) return;
+
+        if (state.currentUser && state.currentUser.email) {
+          els.authStatus.textContent = 'Autenticado: ' + state.currentUser.email;
+          if (els.authEmail) els.authEmail.value = state.currentUser.email;
+          if (els.authPassword) els.authPassword.value = '';
+        } else {
+          els.authStatus.textContent = 'Não autenticado.';
+        }
+      }
+
+      async function handleLogin() {
+        var email = els.authEmail ? els.authEmail.value.trim() : '';
+        var password = els.authPassword ? els.authPassword.value : '';
+
+        if (!email || !password) {
+          alert('Informe e-mail e senha.');
+          return;
+        }
+
+        els.btnLogin.disabled = true;
+        els.btnLogin.textContent = 'Entrando...';
+
+        try {
+          var result = await supabaseClient.auth.signInWithPassword({ email: email, password: password });
+
+          if (result.error) {
+            alert('Erro no login: ' + result.error.message);
+            return;
+          }
+
+          state.currentUser = result.data && result.data.user ? result.data.user : null;
+          renderAuthState();
+          setMessage('Login realizado com sucesso.');
+        } catch (err) {
+          alert('Erro no login: ' + (err && err.message ? err.message : 'falha desconhecida'));
+        } finally {
+          els.btnLogin.disabled = false;
+          els.btnLogin.textContent = 'Entrar';
+        }
+      }
+
+      async function handleLogout() {
+        els.btnLogout.disabled = true;
+        els.btnLogout.textContent = 'Saindo...';
+
+        try {
+          var result = await supabaseClient.auth.signOut();
+          if (result.error) {
+            alert('Erro ao sair: ' + result.error.message);
+            return;
+          }
+
+          state.currentUser = null;
+          renderAuthState();
+          if (els.authPassword) els.authPassword.value = '';
+          setMessage('Logout realizado com sucesso.');
+        } catch (err) {
+          alert('Erro ao sair: ' + (err && err.message ? err.message : 'falha desconhecida'));
+        } finally {
+          els.btnLogout.disabled = false;
+          els.btnLogout.textContent = 'Sair';
+        }
       }
 
       function setMessage(msg) {
@@ -1650,19 +1757,18 @@
           return;
         }
 
-        var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
-        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
-        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
-        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
+        var authResult = await supabaseClient.auth.getUser();
+        var authUser = authResult && authResult.data ? authResult.data.user : null;
 
-        const { data: userData, error: userError } = await supabaseClient.auth.getUser();
-
-        if (userError || !userData || !userData.user) {
+        if (!authUser) {
           alert("Usuário não autenticado.");
           return;
         }
 
-        const userId = userData.user.id;
+        var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
+        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
+        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
+        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
 
         var payload = {
           processo: state.selectedItem.processo || "",
@@ -1672,7 +1778,7 @@
           prazo_seguro: prazoSeguro,
           prazo_fatal: prazoFatal,
           tarefa: tarefa,
-          created_by: userId,
+          created_by: authUser.id,
           created_at: new Date().toISOString()
         };
 
@@ -1808,14 +1914,13 @@
           return;
         }
 
-        const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+        var authResult = await supabaseClient.auth.getUser();
+        var authUser = authResult && authResult.data ? authResult.data.user : null;
 
-        if (userError || !userData || !userData.user) {
+        if (!authUser) {
           alert("Usuário não autenticado.");
           return;
         }
-
-        const userId = userData.user.id;
 
         els.btnSalvarCumprimento.disabled = true;
         els.btnSalvarCumprimento.textContent = "Salvando...";
@@ -1827,7 +1932,7 @@
               cumprido: true,
               cumprido_em: cumpridoEm,
               cumprimento_descricao: cumprimentoDescricao,
-              fulfilled_by: userId,
+              fulfilled_by: authUser.id,
               fulfilled_at: new Date().toISOString()
             })
             .eq("id", prazoId);
