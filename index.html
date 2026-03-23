@@ -563,6 +563,53 @@
       padding:14px;
     }
 
+    .process-deadline-card-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:8px;
+    }
+
+    .prazo-status-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:7px 11px;
+      border-radius:999px;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+      border:1px solid transparent;
+      white-space:nowrap;
+      flex-shrink:0;
+    }
+
+    .prazo-status-badge.vencido{
+      color:var(--danger);
+      background:#fff0f0;
+      border-color:#ebc8c8;
+    }
+
+    .prazo-status-badge.proximo{
+      color:var(--warn);
+      background:#fff5e5;
+      border-color:#ecd8ad;
+    }
+
+    .prazo-status-badge.cumprido{
+      color:var(--ok);
+      background:#edf8f1;
+      border-color:#cce8d5;
+    }
+
+    .prazo-status-badge.no-prazo{
+      color:var(--muted);
+      background:#f5f3ee;
+      border-color:var(--line);
+    }
+
     .process-deadline-card-title{
       font-size:14px;
       font-weight:700;
@@ -603,55 +650,6 @@
     @keyframes spin{
       to{transform:rotate(360deg)}
     }
-
-    .process-deadline-card-top{
-      display:flex;
-      justify-content:space-between;
-      align-items:flex-start;
-      gap:12px;
-      margin-bottom:12px;
-    }
-
-    .prazo-status-badge{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:8px 14px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:700;
-      letter-spacing:.12em;
-      text-transform:uppercase;
-      white-space:nowrap;
-      border:1px solid transparent;
-      line-height:1;
-      flex-shrink:0;
-    }
-
-    .prazo-status-badge.vencido{
-      background:#fdecec;
-      color:#b42318;
-      border-color:#f5c2c0;
-    }
-
-    .prazo-status-badge.proximo{
-      background:#fff4e5;
-      color:#b54708;
-      border-color:#f3d19c;
-    }
-
-    .prazo-status-badge.cumprido{
-      background:#ecfdf3;
-      color:#067647;
-      border-color:#abefc6;
-    }
-
-    .prazo-status-badge.no-prazo{
-      background:#f2f4f7;
-      color:#344054;
-      border-color:#d0d5dd;
-    }
-
 
     @media (max-width: 1100px){
       .topbar, .layout-bottom{grid-template-columns:1fr}
@@ -869,6 +867,35 @@
   </div>
 
 
+  <div id="cumprimentoModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="cumprimentoModalTitle">
+      <div class="modal-head">
+        <h2 class="modal-title" id="cumprimentoModalTitle">Cumprir prazo</h2>
+        <button class="modal-close" id="btnFecharCumprimentoModal" type="button" aria-label="Fechar">×</button>
+      </div>
+
+      <div class="field">
+        <label for="cumpridoEmInput">Data do cumprimento</label>
+        <input type="date" id="cumpridoEmInput" />
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="cumprimentoDescricaoInput">Providência adotada / O que foi feito</label>
+        <textarea id="cumprimentoDescricaoInput" placeholder="Descreva a providência adotada."></textarea>
+      </div>
+
+      <div class="field" style="margin-top:12px;">
+        <label for="responsavelCumprimentoInput">Responsável pelo cumprimento</label>
+        <input type="text" id="responsavelCumprimentoInput" placeholder="Informe o responsável." />
+      </div>
+
+      <div style="margin-top:14px; display:flex; justify-content:flex-end; gap:12px;">
+        <button type="button" id="btnSalvarCumprimento" class="btn-primary">Salvar cumprimento</button>
+        <button type="button" id="btnCancelarCumprimento" class="btn-secondary">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const supabaseClient = supabase.createClient(
@@ -934,7 +961,11 @@
         globalMessage: $("globalMessage"),
         detailsModal: $("detailsModal"),
         detailsModalContent: $("detailsModalContent"),
-        btnFecharModal: $("btnFecharModal")
+        btnFecharModal: $("btnFecharModal"),
+        cumprimentoModal: $("cumprimentoModal"),
+        btnFecharCumprimentoModal: $("btnFecharCumprimentoModal"),
+        btnCancelarCumprimento: $("btnCancelarCumprimento"),
+        btnSalvarCumprimento: $("btnSalvarCumprimento")
       };
 
       init();
@@ -964,7 +995,19 @@
           if (e.target === els.detailsModal) closeDetailsModal();
         });
 
+        els.btnFecharCumprimentoModal.addEventListener("click", closeCumprimentoModal);
+        els.btnCancelarCumprimento.addEventListener("click", closeCumprimentoModal);
+        els.btnSalvarCumprimento.addEventListener("click", salvarCumprimentoPrazo);
+        els.cumprimentoModal.addEventListener("click", function (e) {
+          if (e.target === els.cumprimentoModal) closeCumprimentoModal();
+        });
+
         document.addEventListener("keydown", function (e) {
+          if (e.key === "Escape" && els.cumprimentoModal.classList.contains("show")) {
+            closeCumprimentoModal();
+            return;
+          }
+
           if (e.key === "Escape" && els.detailsModal.classList.contains("show")) {
             closeDetailsModal();
           }
@@ -989,9 +1032,9 @@
             return;
           }
 
-          var btnMarcarCumprido = e.target.closest("[data-action=\"marcar-cumprido\"]");
-          if (btnMarcarCumprido) {
-            marcarPrazoComoCumprido(btnMarcarCumprido.getAttribute("data-id"), btnMarcarCumprido);
+          var btnCumprirPrazo = e.target.closest("[data-cumprir-prazo-id]");
+          if (btnCumprirPrazo) {
+            openCumprimentoModal(btnCumprirPrazo.getAttribute("data-cumprir-prazo-id"));
           }
         });
       }
@@ -1532,7 +1575,7 @@
         try {
           var result = await supabaseClient
             .from("prazos")
-            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa, cumprido, cumprido_em, responsavel_cumprimento")
+            .select("*")
             .eq("processo", processo)
             .order("id", { ascending: false });
 
@@ -1549,15 +1592,6 @@
 
           list.innerHTML = result.data.map(function (prazo) {
             var status = getPrazoStatus(prazo);
-            var infoCumprimento = prazo.cumprido_em
-              ? '<div><strong>Cumprido em:</strong> ' + escapeHtml(formatDateTimeBR(prazo.cumprido_em)) + '</div>'
-              : '<div><strong>Cumprido em:</strong> —</div>';
-            var responsavelCumprimento = prazo.responsavel_cumprimento
-              ? '<div><strong>Responsável pelo cumprimento:</strong> ' + escapeHtml(prazo.responsavel_cumprimento) + '</div>'
-              : '<div><strong>Responsável pelo cumprimento:</strong> —</div>';
-            var botaoCumprido = status.className !== "cumprido"
-              ? '<div class="process-deadline-card-actions"><button type="button" class="btn-mark-done" data-action="marcar-cumprido" data-id="' + escapeHtmlAttr(prazo.id) + '">Marcar como cumprido</button></div>'
-              : '';
 
             return ''
               + '<div class="process-deadline-card">'
@@ -1569,68 +1603,19 @@
               + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
               + '    <div><strong>Prazo seguro:</strong> ' + escapeHtml(prazo.prazo_seguro || '—') + '</div>'
               + '    <div><strong>Prazo fatal:</strong> ' + escapeHtml(prazo.prazo_fatal || '—') + '</div>'
-              + infoCumprimento
-              + responsavelCumprimento
               + '    <div><strong>Órgão julgador:</strong> ' + escapeHtml(prazo.orgao_julgador || '—') + '</div>'
               + '    <div><strong>Partes:</strong> ' + escapeHtml(prazo.partes || '—') + '</div>'
+              + (prazo.cumprido ? '    <div><strong>Cumprido em:</strong> ' + escapeHtml(formatDateBR(prazo.cumprido_em || '')) + '</div>' : '')
+              + (prazo.cumprido ? '    <div><strong>Providência adotada:</strong> ' + escapeHtml(prazo.cumprimento_descricao || '—') + '</div>' : '')
+              + (prazo.cumprido ? '    <div><strong>Responsável pelo cumprimento:</strong> ' + escapeHtml(prazo.responsavel_cumprimento || '—') + '</div>' : '')
+              + (!prazo.cumprido ? '    <div style="margin-top:10px;"><button type="button" class="btn-primary small-btn" data-cumprir-prazo-id="' + escapeHtmlAttr(String(prazo.id)) + '">CUMPRIR PRAZO</button></div>' : '')
               + '  </div>'
-              + botaoCumprido
               + '</div>';
           }).join("");
         } catch (err) {
           list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar prazos.</div>';
           console.error(err);
         }
-      }
-
-
-
-      function parsePrazoDate(value) {
-        if (!value) return null;
-
-        var s = String(value).trim();
-        if (!s) return null;
-
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-          var iso = s.split("-");
-          return new Date(Number(iso[0]), Number(iso[1]) - 1, Number(iso[2]), 0, 0, 0, 0);
-        }
-
-        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-          var br = s.split("/");
-          return new Date(Number(br[2]), Number(br[1]) - 1, Number(br[0]), 0, 0, 0, 0);
-        }
-
-        var d = new Date(s);
-        if (Number.isNaN(d.getTime())) return null;
-        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-      }
-
-      function getPrazoStatus(prazo) {
-        if (prazo && (prazo.cumprido === true || prazo.cumprido_em || prazo.data_cumprimento)) {
-          return { className: "cumprido", label: "🟢 CUMPRIDO" };
-        }
-
-        var prazoFatal = parsePrazoDate(prazo && prazo.prazo_fatal);
-        if (!prazoFatal) {
-          return { className: "no-prazo", label: "NO PRAZO" };
-        }
-
-        var hoje = new Date();
-        hoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
-
-        var diffMs = prazoFatal.getTime() - hoje.getTime();
-        var diasRestantes = Math.floor(diffMs / 86400000);
-
-        if (diasRestantes < 0) {
-          return { className: "vencido", label: "🔴 VENCIDO" };
-        }
-
-        if (diasRestantes <= 3) {
-          return { className: "proximo", label: "🟡 PRÓXIMO DO VENCIMENTO" };
-        }
-
-        return { className: "no-prazo", label: "NO PRAZO" };
       }
 
       function toggleManualDeadlineForm(show) {
@@ -1681,10 +1666,7 @@
           prazo_inicial: prazoInicial,
           prazo_seguro: prazoSeguro,
           prazo_fatal: prazoFatal,
-          tarefa: tarefa,
-          cumprido: false,
-          cumprido_em: null,
-          responsavel_cumprimento: null
+          tarefa: tarefa
         };
 
         var btnSalvar = document.getElementById("btnSalvarPrazoManual");
@@ -1717,80 +1699,6 @@
         }
       }
 
-      async function marcarPrazoComoCumprido(id, btn) {
-        if (!window.supabase || !supabaseClient) {
-          alert("Supabase não carregado.");
-          return;
-        }
-
-        if (!id) {
-          alert("Prazo não identificado.");
-          return;
-        }
-
-        var responsavelPadrao = localStorage.getItem("ultimo_responsavel_cumprimento") || "";
-        var responsavel = window.prompt("Informe o responsável pelo cumprimento:", responsavelPadrao);
-
-        if (responsavel === null) return;
-
-        responsavel = String(responsavel || "").trim();
-        if (!responsavel) {
-          alert("Informe o responsável pelo cumprimento.");
-          return;
-        }
-
-        localStorage.setItem("ultimo_responsavel_cumprimento", responsavel);
-
-        if (btn) {
-          btn.disabled = true;
-          btn.textContent = "Salvando...";
-        }
-
-        try {
-          var result = await supabaseClient
-            .from("prazos")
-            .update({
-              cumprido: true,
-              cumprido_em: new Date().toISOString(),
-              responsavel_cumprimento: responsavel
-            })
-            .eq("id", id);
-
-          if (result.error) {
-            alert("Erro ao marcar cumprimento: " + result.error.message);
-            console.error(result.error);
-            return;
-          }
-
-          if (state.selectedItem && state.selectedItem.processo) {
-            carregarPrazosDoProcessoModal(state.selectedItem.processo);
-          }
-        } catch (err) {
-          alert("Erro ao marcar cumprimento: " + (err && err.message ? err.message : "falha desconhecida"));
-          console.error(err);
-        } finally {
-          if (btn) {
-            btn.disabled = false;
-            btn.textContent = "Marcar como cumprido";
-          }
-        }
-      }
-
-      function formatDateTimeBR(value) {
-        if (!value) return "—";
-
-        var d = new Date(value);
-        if (Number.isNaN(d.getTime())) return String(value);
-
-        return d.toLocaleString("pt-BR", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit"
-        });
-      }
-
       function getNextBusinessDayBR(isoDate) {
         if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "";
 
@@ -1807,6 +1715,127 @@
         return day + "/" + m + "/" + y;
       }
 
+      function parsePrazoDate(value) {
+        if (!value) return null;
+
+        var s = String(value).trim();
+
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+          var iso = s.split("-");
+          return new Date(Number(iso[0]), Number(iso[1]) - 1, Number(iso[2]), 0, 0, 0, 0);
+        }
+
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+          var br = s.split("/");
+          return new Date(Number(br[2]), Number(br[1]) - 1, Number(br[0]), 0, 0, 0, 0);
+        }
+
+        var d = new Date(s);
+        if (Number.isNaN(d.getTime())) return null;
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      }
+
+      function getPrazoStatus(prazo) {
+        if (prazo && (prazo.cumprido === true || prazo.cumprido_em || prazo.data_cumprimento)) {
+          return { className: "cumprido", label: "🟢 CUMPRIDO" };
+        }
+
+        var prazoFatal = parsePrazoDate(prazo && prazo.prazo_fatal);
+        if (!prazoFatal) {
+          return { className: "no-prazo", label: "NO PRAZO" };
+        }
+
+        var hoje = new Date();
+        hoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
+
+        var diffMs = prazoFatal.getTime() - hoje.getTime();
+        var diasRestantes = Math.floor(diffMs / 86400000);
+
+        if (diasRestantes < 0) {
+          return { className: "vencido", label: "🔴 VENCIDO" };
+        }
+
+        if (diasRestantes <= 3) {
+          return { className: "proximo", label: "🟡 PRÓXIMO DO VENCIMENTO" };
+        }
+
+        return { className: "no-prazo", label: "NO PRAZO" };
+      }
+
+      function openCumprimentoModal(prazoId) {
+        if (!prazoId) return;
+
+        var inputData = $("cumpridoEmInput");
+        var inputDescricao = $("cumprimentoDescricaoInput");
+        var inputResponsavel = $("responsavelCumprimentoInput");
+
+        if (inputData) inputData.value = new Date().toISOString().slice(0, 10);
+        if (inputDescricao) inputDescricao.value = "";
+        if (inputResponsavel) inputResponsavel.value = "";
+
+        els.cumprimentoModal.setAttribute("data-prazo-id", String(prazoId));
+        els.cumprimentoModal.classList.add("show");
+        els.cumprimentoModal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeCumprimentoModal() {
+        els.cumprimentoModal.classList.remove("show");
+        els.cumprimentoModal.setAttribute("aria-hidden", "true");
+        els.cumprimentoModal.removeAttribute("data-prazo-id");
+        if (!els.detailsModal.classList.contains("show")) {
+          document.body.classList.remove("modal-open");
+        }
+      }
+
+      async function salvarCumprimentoPrazo() {
+        var prazoId = els.cumprimentoModal.getAttribute("data-prazo-id");
+        var cumpridoEm = $("cumpridoEmInput") ? $("cumpridoEmInput").value.trim() : "";
+        var cumprimentoDescricao = $("cumprimentoDescricaoInput") ? $("cumprimentoDescricaoInput").value.trim() : "";
+        var responsavelCumprimento = $("responsavelCumprimentoInput") ? $("responsavelCumprimentoInput").value.trim() : "";
+
+        if (!prazoId) {
+          alert("Prazo não identificado.");
+          return;
+        }
+
+        if (!cumpridoEm || !cumprimentoDescricao || !responsavelCumprimento) {
+          alert("Preencha data do cumprimento, providência adotada e responsável.");
+          return;
+        }
+
+        els.btnSalvarCumprimento.disabled = true;
+        els.btnSalvarCumprimento.textContent = "Salvando...";
+
+        try {
+          var result = await supabaseClient
+            .from("prazos")
+            .update({
+              cumprido: true,
+              cumprido_em: cumpridoEm,
+              cumprimento_descricao: cumprimentoDescricao,
+              responsavel_cumprimento: responsavelCumprimento
+            })
+            .eq("id", prazoId);
+
+          if (result.error) {
+            alert("Erro ao salvar cumprimento: " + result.error.message);
+            console.error(result.error);
+            return;
+          }
+
+          closeCumprimentoModal();
+          await carregarPrazosDoProcessoModal(state.selectedItem ? (state.selectedItem.processo || "") : "");
+          setMessage("Cumprimento do prazo salvo com sucesso.");
+        } catch (err) {
+          alert("Erro ao salvar cumprimento: " + (err && err.message ? err.message : "falha desconhecida"));
+          console.error(err);
+        } finally {
+          els.btnSalvarCumprimento.disabled = false;
+          els.btnSalvarCumprimento.textContent = "Salvar cumprimento";
+        }
+      }
+
       function openDetailsModal() {
         els.detailsModal.classList.add("show");
         els.detailsModal.setAttribute("aria-hidden", "false");
@@ -1817,7 +1846,9 @@
         els.detailsModal.classList.remove("show");
         els.detailsModal.setAttribute("aria-hidden", "true");
         els.detailsModalContent.innerHTML = "";
-        document.body.classList.remove("modal-open");
+        if (!els.cumprimentoModal.classList.contains("show")) {
+          document.body.classList.remove("modal-open");
+        }
       }
 
       function exportJson() {
