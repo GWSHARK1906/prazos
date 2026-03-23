@@ -986,6 +986,12 @@
           var btnFecharManual = e.target.closest("#btnFecharPrazoManual");
           if (btnFecharManual) {
             toggleManualDeadlineForm(false);
+            return;
+          }
+
+          var btnMarcarCumprido = e.target.closest("[data-action=\"marcar-cumprido\"]");
+          if (btnMarcarCumprido) {
+            marcarPrazoComoCumprido(btnMarcarCumprido.getAttribute("data-id"), btnMarcarCumprido);
           }
         });
       }
@@ -1526,7 +1532,7 @@
         try {
           var result = await supabaseClient
             .from("prazos")
-            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa")
+            .select("id, processo, orgao_julgador, partes, prazo_inicial, prazo_seguro, prazo_fatal, tarefa, cumprido, cumprido_em, responsavel_cumprimento")
             .eq("processo", processo)
             .order("id", { ascending: false });
 
@@ -1543,6 +1549,15 @@
 
           list.innerHTML = result.data.map(function (prazo) {
             var status = getPrazoStatus(prazo);
+            var infoCumprimento = prazo.cumprido_em
+              ? '<div><strong>Cumprido em:</strong> ' + escapeHtml(formatDateTimeBR(prazo.cumprido_em)) + '</div>'
+              : '<div><strong>Cumprido em:</strong> —</div>';
+            var responsavelCumprimento = prazo.responsavel_cumprimento
+              ? '<div><strong>Responsável pelo cumprimento:</strong> ' + escapeHtml(prazo.responsavel_cumprimento) + '</div>'
+              : '<div><strong>Responsável pelo cumprimento:</strong> —</div>';
+            var botaoCumprido = status.className !== "cumprido"
+              ? '<div class="process-deadline-card-actions"><button type="button" class="btn-mark-done" data-action="marcar-cumprido" data-id="' + escapeHtmlAttr(prazo.id) + '">Marcar como cumprido</button></div>'
+              : '';
 
             return ''
               + '<div class="process-deadline-card">'
@@ -1554,9 +1569,12 @@
               + '    <div><strong>Prazo inicial:</strong> ' + escapeHtml(prazo.prazo_inicial || '—') + '</div>'
               + '    <div><strong>Prazo seguro:</strong> ' + escapeHtml(prazo.prazo_seguro || '—') + '</div>'
               + '    <div><strong>Prazo fatal:</strong> ' + escapeHtml(prazo.prazo_fatal || '—') + '</div>'
+              + infoCumprimento
+              + responsavelCumprimento
               + '    <div><strong>Órgão julgador:</strong> ' + escapeHtml(prazo.orgao_julgador || '—') + '</div>'
               + '    <div><strong>Partes:</strong> ' + escapeHtml(prazo.partes || '—') + '</div>'
               + '  </div>'
+              + botaoCumprido
               + '</div>';
           }).join("");
         } catch (err) {
@@ -1663,7 +1681,10 @@
           prazo_inicial: prazoInicial,
           prazo_seguro: prazoSeguro,
           prazo_fatal: prazoFatal,
-          tarefa: tarefa
+          tarefa: tarefa,
+          cumprido: false,
+          cumprido_em: null,
+          responsavel_cumprimento: null
         };
 
         var btnSalvar = document.getElementById("btnSalvarPrazoManual");
@@ -1694,6 +1715,80 @@
             btnSalvar.textContent = "Salvar";
           }
         }
+      }
+
+      async function marcarPrazoComoCumprido(id, btn) {
+        if (!window.supabase || !supabaseClient) {
+          alert("Supabase não carregado.");
+          return;
+        }
+
+        if (!id) {
+          alert("Prazo não identificado.");
+          return;
+        }
+
+        var responsavelPadrao = localStorage.getItem("ultimo_responsavel_cumprimento") || "";
+        var responsavel = window.prompt("Informe o responsável pelo cumprimento:", responsavelPadrao);
+
+        if (responsavel === null) return;
+
+        responsavel = String(responsavel || "").trim();
+        if (!responsavel) {
+          alert("Informe o responsável pelo cumprimento.");
+          return;
+        }
+
+        localStorage.setItem("ultimo_responsavel_cumprimento", responsavel);
+
+        if (btn) {
+          btn.disabled = true;
+          btn.textContent = "Salvando...";
+        }
+
+        try {
+          var result = await supabaseClient
+            .from("prazos")
+            .update({
+              cumprido: true,
+              cumprido_em: new Date().toISOString(),
+              responsavel_cumprimento: responsavel
+            })
+            .eq("id", id);
+
+          if (result.error) {
+            alert("Erro ao marcar cumprimento: " + result.error.message);
+            console.error(result.error);
+            return;
+          }
+
+          if (state.selectedItem && state.selectedItem.processo) {
+            carregarPrazosDoProcessoModal(state.selectedItem.processo);
+          }
+        } catch (err) {
+          alert("Erro ao marcar cumprimento: " + (err && err.message ? err.message : "falha desconhecida"));
+          console.error(err);
+        } finally {
+          if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Marcar como cumprido";
+          }
+        }
+      }
+
+      function formatDateTimeBR(value) {
+        if (!value) return "—";
+
+        var d = new Date(value);
+        if (Number.isNaN(d.getTime())) return String(value);
+
+        return d.toLocaleString("pt-BR", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit"
+        });
       }
 
       function getNextBusinessDayBR(isoDate) {
