@@ -817,9 +817,7 @@
           <label for="somenteComPrazo">Exibição</label>
           <select id="somenteComPrazo">
             <option value="todos" selected>Todas as publicações</option>
-            <option value="comPrazo">Somente com prazo salvo</option>
-            <option value="semPrazo">Somente sem prazo salvo</option>
-          </select>
+                      </select>
         </div>
 
         <div class="field span-6" style="display:none;">
@@ -842,7 +840,6 @@
         <div class="results-title">Publicações encontradas</div>
         <div class="actions">
           <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
-          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
         </div>
       </div>
 
@@ -892,7 +889,7 @@
           </div>
           <div class="kv">
             <div class="key">Persistência</div>
-            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
+            <div class="val">Os dados oficiais devem ser consultados e persistidos pelo backend.</div>
           </div>
           <div class="kv">
             <div class="key">Segurança</div>
@@ -977,7 +974,6 @@
 
       var CONFIG = {
         defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
-        storageKeyDeadlines: "snap_tracker_deadlines_v2",
         storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
@@ -991,7 +987,6 @@
         filteredItems: [],
         selectedItem: null,
         selectedPrazoForCumprimento: null,
-        deadlines: loadDeadlines(),
         loading: false
       };
 
@@ -1013,7 +1008,6 @@
         btn30dias: $("btn30dias"),
         btnLimpar: $("btnLimpar"),
         btnExportarJson: $("btnExportarJson"),
-        btnApagarPrazos: $("btnApagarPrazos"),
         resultsBody: $("resultsBody"),
         emptyState: $("emptyState"),
         detailsBox: $("detailsBox"),
@@ -1037,7 +1031,6 @@
 
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
-        localStorage.setItem(CONFIG.storageKeyWorkerUrl, CONFIG.defaultWorkerUrl);
         presetLast7Days();
         applyDateMask(els.desde);
         applyDateMask(els.ate);
@@ -1049,7 +1042,6 @@
         els.btn30dias.addEventListener("click", presetLast30Days);
         els.btnLimpar.addEventListener("click", clearFilters);
         els.btnExportarJson.addEventListener("click", exportJson);
-        els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
 
         els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
         els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
@@ -1123,22 +1115,10 @@
         localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
       }
 
-      function loadDeadlines() {
-        try {
-          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-        } catch (e) {
-          return {};
-        }
-      }
-
-      function saveDeadlines() {
-        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
-        updateDashboard();
-      }
 
       function updateDashboard() {
         els.resultsCount.textContent = String(state.filteredItems.length || 0);
-        els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
+        els.savedDeadlinesCount.textContent = "—";
         els.connStatus.textContent = state.loading
           ? "Consultando..."
           : (state.rawItems.length ? "Conectado" : "Aguardando");
@@ -1330,7 +1310,7 @@
             partes: partes,
             advogados: advogados,
             texto: texto,
-            prazoFinal: state.deadlines[id] || ""
+            prazoFinal: ""
           };
         });
       }
@@ -1433,11 +1413,6 @@
           });
         }
 
-        if (mode === "comPrazo") {
-          items = items.filter(function (item) { return !!state.deadlines[item.id]; });
-        } else if (mode === "semPrazo") {
-          items = items.filter(function (item) { return !state.deadlines[item.id]; });
-        }
 
         state.filteredItems = items;
         renderRows(items);
@@ -1463,9 +1438,8 @@
             tr.classList.add("sem-efeito");
           }
 
-          var prazo = state.deadlines[item.id] || "";
-          var badgeClass = prazo ? "ok" : "warn";
-          var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
+          var badgeClass = "muted";
+          var badgeText  = "Gerir nos detalhes";
 
           var tipoAtoBadge = "";
           if (item.semEfeitoIntimacao) {
@@ -1508,7 +1482,6 @@
             + '  <div style="display:grid; gap:6px;">'
             + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
             + tipoAtoBadge
-            + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
             + '  </div>'
             + '</td>'
             + '<td>'
@@ -1523,24 +1496,6 @@
 
         els.resultsBody.appendChild(frag);
 
-        els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
-          input.addEventListener("change", function (e) {
-            var id = e.target.getAttribute("data-deadline-id");
-            var value = e.target.value || "";
-
-            if (value) state.deadlines[id] = value;
-            else delete state.deadlines[id];
-
-            saveDeadlines();
-
-            state.rawItems = state.rawItems.map(function (i) {
-              return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
-            });
-
-            applyLocalFiltersAndRender();
-            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
-          });
-        });
 
         els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
           btn.addEventListener("click", function (e) {
@@ -1569,7 +1524,7 @@
               "Tipo de ato: " + (item.tipoAto || "—"),
               "Partes: " + (item.partes || "—"),
               "Advogados: " + (item.advogados || "—"),
-              "Prazo final: " + (state.deadlines[item.id] || "—"),
+              "Prazo final: " + (item.prazoFinal || "—"),
               "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
               "",
               item.texto || ""
@@ -1588,7 +1543,7 @@
       function renderDetails(item) {
         if (!item) return;
 
-        var prazo = state.deadlines[item.id] || "—";
+        var prazo = item.prazoFinal || "—";
 
         els.detailsModalContent.innerHTML = ''
           + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
@@ -2073,7 +2028,7 @@
               partes: item.partes,
               advogados: item.advogados,
               texto: item.texto,
-              prazoFinal: state.deadlines[item.id] || "",
+              prazoFinal: item.prazoFinal || "",
               raw: item._raw || {}
             };
           })
@@ -2094,18 +2049,6 @@
         setMessage("Exportação concluída.");
       }
 
-      function clearAllDeadlines() {
-        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
-        state.deadlines = {};
-        saveDeadlines();
-        applyLocalFiltersAndRender();
-        if (state.selectedItem) {
-          renderDetails(state.selectedItem);
-        } else {
-          closeDetailsModal();
-        }
-        setMessage("Todos os prazos foram apagados.");
-      }
 
       function truncate(text, max) {
         var s = String(text || "");
