@@ -958,29 +958,31 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    const SUPABASE_URL = "https://lvvichuirvzngdudepso.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_f2xgZqUvNlsGNzsdd9eU8Q_qHFVlSC7";
+    const supabaseClient = supabase.createClient(
+      "https://lvvichuirvzngdudepso.supabase.co",
+      "sb_publishable_f2xgZqUvNlsGNzsdd9eU8Q_qHFVlSC7"
+    );
 
-    /*
-      PREENCHER COM O USUÁRIO TEST CRIADO EM Authentication > Users
-      Exemplo:
-      const TEST_AUTH_EMAIL = "test@seudominio.com";
-      const TEST_AUTH_PASSWORD = "SuaSenhaAqui";
-    */
     const TEST_AUTH_EMAIL = "";
     const TEST_AUTH_PASSWORD = "";
 
-    const supabaseClient = supabase.createClient(
-      SUPABASE_URL,
-      SUPABASE_ANON_KEY,
-      {
-        auth: {
-          persistSession: false,
-          autoRefreshToken: true,
-          detectSessionInUrl: false
-        }
+    async function ensureTestAuth() {
+      if (!TEST_AUTH_EMAIL || !TEST_AUTH_PASSWORD) {
+        throw new Error("Preencha TEST_AUTH_EMAIL e TEST_AUTH_PASSWORD no index.");
       }
-    );
+
+      var sessionResp = await supabaseClient.auth.getSession();
+      if (sessionResp.error) throw sessionResp.error;
+      if (sessionResp.data && sessionResp.data.session) return sessionResp.data.session;
+
+      var signInResp = await supabaseClient.auth.signInWithPassword({
+        email: TEST_AUTH_EMAIL,
+        password: TEST_AUTH_PASSWORD
+      });
+
+      if (signInResp.error) throw signInResp.error;
+      return signInResp.data ? signInResp.data.session : null;
+    }
   </script>
 
   <script>
@@ -1013,8 +1015,7 @@
         selectedItem: null,
         selectedPrazoForCumprimento: null,
         deadlines: loadDeadlines(),
-        loading: false,
-        authReady: false
+        loading: false
       };
 
       function $(id) {
@@ -1057,20 +1058,13 @@
 
       init();
 
-      async function init() {
+      function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
         localStorage.setItem(CONFIG.storageKeyWorkerUrl, CONFIG.defaultWorkerUrl);
         presetLast7Days();
         applyDateMask(els.desde);
         applyDateMask(els.ate);
         updateDashboard();
-
-        try {
-          await ensureSupabaseAuth();
-        } catch (authErr) {
-          console.error(authErr);
-          setMessage("Autenticação Supabase não concluída: " + (authErr.message || authErr));
-        }
 
         els.btnBuscar.addEventListener("click", handleBuscar);
         els.btnHoje.addEventListener("click", presetToday);
@@ -1146,34 +1140,6 @@
             });
           }
         });
-      }
-
-      async function ensureSupabaseAuth() {
-        if (state.authReady) return true;
-
-        var sessaoAtual = await supabaseClient.auth.getSession();
-        if (sessaoAtual && sessaoAtual.data && sessaoAtual.data.session) {
-          state.authReady = true;
-          setMessage("Usuário test autenticado no Supabase.");
-          return true;
-        }
-
-        if (!TEST_AUTH_EMAIL || !TEST_AUTH_PASSWORD) {
-          throw new Error("Preencha TEST_AUTH_EMAIL e TEST_AUTH_PASSWORD no index antes de publicar.");
-        }
-
-        var login = await supabaseClient.auth.signInWithPassword({
-          email: TEST_AUTH_EMAIL,
-          password: TEST_AUTH_PASSWORD
-        });
-
-        if (login.error) {
-          throw login.error;
-        }
-
-        state.authReady = true;
-        setMessage("Usuário test autenticado no Supabase.");
-        return true;
       }
 
       function persistWorkerUrl() {
@@ -1699,8 +1665,7 @@
       }
 
       async function carregarPrazosDoProcessoModal(processo) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var list = document.getElementById("processDeadlinesList");
         if (!list) return;
 
@@ -1791,8 +1756,7 @@
       }
 
       async function salvarPrazoManual() {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         if (!window.supabase || !supabaseClient) {
           alert("Supabase não carregado.");
           return;
@@ -1956,8 +1920,7 @@
       }
 
       async function salvarCumprimentoPrazo() {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var prazoId = els.cumprimentoModal.getAttribute("data-prazo-id");
         var cumpridoEm = $("cumpridoEmInput") ? $("cumpridoEmInput").value.trim() : "";
         var cumprimentoDescricao = $("cumprimentoDescricaoInput") ? $("cumprimentoDescricaoInput").value.trim() : "";
@@ -2053,8 +2016,7 @@
       }
 
       async function ensureClienteByNome(nomeCliente) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var nome = String(nomeCliente || "").trim() || CONFIG.clientePadraoNome;
 
         var existente = await supabaseClient
@@ -2077,8 +2039,7 @@
       }
 
       async function ensureProcessoByNumero(numeroProcesso, clienteId) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var numero = String(numeroProcesso || "").trim();
         if (!numero) {
           throw new Error("Número do processo não informado para vincular o documento.");
@@ -2108,8 +2069,7 @@
       }
 
       async function resolveRelationalIdsForPrazo(meta) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var prazoId = meta && meta.prazoId ? String(meta.prazoId) : "";
         if (!prazoId) {
           throw new Error("Prazo não identificado para vincular o documento.");
@@ -2166,8 +2126,7 @@
       }
 
       async function uploadPrazoAnexoArquivo(file, meta) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         if (!file) return null;
 
         var ids = await resolveRelationalIdsForPrazo(meta || {});
@@ -2217,8 +2176,7 @@
       }
 
       async function carregarAnexosPrazo(prazoId) {
-        await ensureSupabaseAuth();
-
+        await ensureTestAuth();
         var target = document.getElementById("prazoAnexos-" + prazoId);
         if (!target || !prazoId) return;
 
