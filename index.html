@@ -817,7 +817,9 @@
           <label for="somenteComPrazo">Exibição</label>
           <select id="somenteComPrazo">
             <option value="todos" selected>Todas as publicações</option>
-                      </select>
+            <option value="comPrazo">Somente com prazo salvo</option>
+            <option value="semPrazo">Somente sem prazo salvo</option>
+          </select>
         </div>
 
         <div class="field span-6" style="display:none;">
@@ -840,6 +842,7 @@
         <div class="results-title">Publicações encontradas</div>
         <div class="actions">
           <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
+          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
         </div>
       </div>
 
@@ -889,7 +892,7 @@
           </div>
           <div class="kv">
             <div class="key">Persistência</div>
-            <div class="val">Os dados oficiais devem ser consultados e persistidos pelo backend.</div>
+            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
           </div>
           <div class="kv">
             <div class="key">Segurança</div>
@@ -974,11 +977,14 @@
 
       var CONFIG = {
         defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
+        storageKeyDeadlines: "snap_tracker_deadlines_v2",
         storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
         actionUploadPrazoAnexo: "uploadPrazoAnexo",
         actionListarPrazoAnexos: "listarPrazoAnexos",
+        bucketDocumentos: "arquivos-processuais",
+        clientePadraoNome: "Cliente não informado",
         usarEndpointDetalhe: false
       };
 
@@ -987,6 +993,7 @@
         filteredItems: [],
         selectedItem: null,
         selectedPrazoForCumprimento: null,
+        deadlines: loadDeadlines(),
         loading: false
       };
 
@@ -1008,6 +1015,7 @@
         btn30dias: $("btn30dias"),
         btnLimpar: $("btnLimpar"),
         btnExportarJson: $("btnExportarJson"),
+        btnApagarPrazos: $("btnApagarPrazos"),
         resultsBody: $("resultsBody"),
         emptyState: $("emptyState"),
         detailsBox: $("detailsBox"),
@@ -1031,6 +1039,7 @@
 
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
+        localStorage.setItem(CONFIG.storageKeyWorkerUrl, CONFIG.defaultWorkerUrl);
         presetLast7Days();
         applyDateMask(els.desde);
         applyDateMask(els.ate);
@@ -1042,6 +1051,7 @@
         els.btn30dias.addEventListener("click", presetLast30Days);
         els.btnLimpar.addEventListener("click", clearFilters);
         els.btnExportarJson.addEventListener("click", exportJson);
+        els.btnApagarPrazos.addEventListener("click", clearAllDeadlines);
 
         els.buscaLivre.addEventListener("input", applyLocalFiltersAndRender);
         els.somenteComPrazo.addEventListener("change", applyLocalFiltersAndRender);
@@ -1115,10 +1125,22 @@
         localStorage.setItem(CONFIG.storageKeyWorkerUrl, (els.workerUrl.value || "").trim());
       }
 
+      function loadDeadlines() {
+        try {
+          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
+        } catch (e) {
+          return {};
+        }
+      }
+
+      function saveDeadlines() {
+        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
+        updateDashboard();
+      }
 
       function updateDashboard() {
         els.resultsCount.textContent = String(state.filteredItems.length || 0);
-        els.savedDeadlinesCount.textContent = "—";
+        els.savedDeadlinesCount.textContent = String(Object.keys(state.deadlines).length);
         els.connStatus.textContent = state.loading
           ? "Consultando..."
           : (state.rawItems.length ? "Conectado" : "Aguardando");
@@ -1310,7 +1332,7 @@
             partes: partes,
             advogados: advogados,
             texto: texto,
-            prazoFinal: ""
+            prazoFinal: state.deadlines[id] || ""
           };
         });
       }
@@ -1413,6 +1435,11 @@
           });
         }
 
+        if (mode === "comPrazo") {
+          items = items.filter(function (item) { return !!state.deadlines[item.id]; });
+        } else if (mode === "semPrazo") {
+          items = items.filter(function (item) { return !state.deadlines[item.id]; });
+        }
 
         state.filteredItems = items;
         renderRows(items);
@@ -1438,8 +1465,9 @@
             tr.classList.add("sem-efeito");
           }
 
-          var badgeClass = "muted";
-          var badgeText  = "Gerir nos detalhes";
+          var prazo = state.deadlines[item.id] || "";
+          var badgeClass = prazo ? "ok" : "warn";
+          var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
 
           var tipoAtoBadge = "";
           if (item.semEfeitoIntimacao) {
@@ -1482,6 +1510,7 @@
             + '  <div style="display:grid; gap:6px;">'
             + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
             + tipoAtoBadge
+            + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
             + '  </div>'
             + '</td>'
             + '<td>'
@@ -1496,6 +1525,24 @@
 
         els.resultsBody.appendChild(frag);
 
+        els.resultsBody.querySelectorAll("[data-deadline-id]").forEach(function (input) {
+          input.addEventListener("change", function (e) {
+            var id = e.target.getAttribute("data-deadline-id");
+            var value = e.target.value || "";
+
+            if (value) state.deadlines[id] = value;
+            else delete state.deadlines[id];
+
+            saveDeadlines();
+
+            state.rawItems = state.rawItems.map(function (i) {
+              return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
+            });
+
+            applyLocalFiltersAndRender();
+            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
+          });
+        });
 
         els.resultsBody.querySelectorAll("[data-detail-id]").forEach(function (btn) {
           btn.addEventListener("click", function (e) {
@@ -1524,7 +1571,7 @@
               "Tipo de ato: " + (item.tipoAto || "—"),
               "Partes: " + (item.partes || "—"),
               "Advogados: " + (item.advogados || "—"),
-              "Prazo final: " + (item.prazoFinal || "—"),
+              "Prazo final: " + (state.deadlines[item.id] || "—"),
               "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
               "",
               item.texto || ""
@@ -1543,7 +1590,7 @@
       function renderDetails(item) {
         if (!item) return;
 
-        var prazo = item.prazoFinal || "—";
+        var prazo = state.deadlines[item.id] || "—";
 
         els.detailsModalContent.innerHTML = ''
           + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
@@ -1702,8 +1749,14 @@
         var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
         var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
 
+        var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
+        var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
+
         var payload = {
           processo: state.selectedItem.processo || "",
+          cliente: CONFIG.clientePadraoNome,
+          cliente_id: clienteIdParaPrazo,
+          processo_id: processoIdParaPrazo,
           orgao_julgador: state.selectedItem.vara || "",
           partes: state.selectedItem.partes || "",
           prazo_inicial: prazoInicial,
@@ -1938,34 +1991,160 @@
         return data;
       }
 
+      async function ensureClienteByNome(nomeCliente) {
+        var nome = String(nomeCliente || "").trim() || CONFIG.clientePadraoNome;
+
+        var existente = await supabaseClient
+          .from("clientes")
+          .select("id,nome")
+          .eq("nome", nome)
+          .limit(1);
+
+        if (existente.error) throw existente.error;
+        if (existente.data && existente.data.length) return existente.data[0].id;
+
+        var criado = await supabaseClient
+          .from("clientes")
+          .insert([{ nome: nome }])
+          .select("id")
+          .single();
+
+        if (criado.error) throw criado.error;
+        return criado.data.id;
+      }
+
+      async function ensureProcessoByNumero(numeroProcesso, clienteId) {
+        var numero = String(numeroProcesso || "").trim();
+        if (!numero) {
+          throw new Error("Número do processo não informado para vincular o documento.");
+        }
+
+        var existente = await supabaseClient
+          .from("processos")
+          .select("id,cliente_id,numero_processo")
+          .eq("numero_processo", numero)
+          .limit(1);
+
+        if (existente.error) throw existente.error;
+        if (existente.data && existente.data.length) return existente.data[0].id;
+
+        var criado = await supabaseClient
+          .from("processos")
+          .insert([{
+            cliente_id: clienteId,
+            numero_processo: numero,
+            titulo: numero
+          }])
+          .select("id")
+          .single();
+
+        if (criado.error) throw criado.error;
+        return criado.data.id;
+      }
+
+      async function resolveRelationalIdsForPrazo(meta) {
+        var prazoId = meta && meta.prazoId ? String(meta.prazoId) : "";
+        if (!prazoId) {
+          throw new Error("Prazo não identificado para vincular o documento.");
+        }
+
+        var prazoResp = await supabaseClient
+          .from("prazos")
+          .select("id,processo_id,cliente_id,processo,cliente")
+          .eq("id", prazoId)
+          .single();
+
+        if (prazoResp.error) throw prazoResp.error;
+
+        var prazo = prazoResp.data || {};
+        var clienteId = prazo.cliente_id || null;
+        var processoId = prazo.processo_id || null;
+        var processoNumero = String(prazo.processo || (meta && meta.processo) || "").trim();
+        var clienteNome = String(prazo.cliente || (meta && meta.cliente) || "").trim() || CONFIG.clientePadraoNome;
+
+        if (!clienteId) {
+          clienteId = await ensureClienteByNome(clienteNome);
+        }
+
+        if (!processoId) {
+          processoId = await ensureProcessoByNumero(processoNumero, clienteId);
+        }
+
+        var updatePayload = {};
+        if (!prazo.cliente_id && clienteId) updatePayload.cliente_id = clienteId;
+        if (!prazo.processo_id && processoId) updatePayload.processo_id = processoId;
+
+        if (Object.keys(updatePayload).length) {
+          var updatePrazo = await supabaseClient
+            .from("prazos")
+            .update(updatePayload)
+            .eq("id", prazoId);
+
+          if (updatePrazo.error) throw updatePrazo.error;
+        }
+
+        return {
+          clienteId: clienteId,
+          processoId: processoId,
+          prazoId: prazoId
+        };
+      }
+
+      function sanitizeFileName(name) {
+        return String(name || "arquivo")
+          .normalize("NFD").replace(/[̀-ͯ]/g, "")
+          .replace(/[^a-zA-Z0-9._-]+/g, "_")
+          .replace(/_+/g, "_")
+          .replace(/^_+|_+$/g, "") || "arquivo";
+      }
+
       async function uploadPrazoAnexoArquivo(file, meta) {
         if (!file) return null;
 
-        var workerUrl = (els.workerUrl.value || CONFIG.defaultWorkerUrl || "").trim();
-        if (!workerUrl) {
-          throw new Error("Endpoint do Worker não informado.");
+        var ids = await resolveRelationalIdsForPrazo(meta || {});
+        var bucket = CONFIG.bucketDocumentos;
+        var nomeOriginal = file.name || "arquivo";
+        var nomeArmazenado = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + "__" + sanitizeFileName(nomeOriginal);
+        var caminho = "cliente/" + ids.clienteId + "/processo/" + ids.processoId + "/prazos/" + ids.prazoId + "/cumprimento/" + nomeArmazenado;
+
+        var upload = await supabaseClient.storage
+          .from(bucket)
+          .upload(caminho, file, {
+            upsert: false,
+            contentType: file.type || "application/octet-stream"
+          });
+
+        if (upload.error) throw upload.error;
+
+        var insertDoc = await supabaseClient
+          .from("documentos")
+          .insert([{
+            processo_id: ids.processoId,
+            prazo_id: ids.prazoId,
+            tipo_documento: "cumprimento",
+            origem: "cumprimento",
+            nome_original: nomeOriginal,
+            nome_armazenado: nomeArmazenado,
+            bucket: bucket,
+            caminho_storage: caminho,
+            mime_type: file.type || null,
+            tamanho_bytes: Number(file.size || 0),
+            enviado_por: meta && meta.enviadoPor ? meta.enviadoPor : null,
+            observacoes: meta && meta.observacoes ? meta.observacoes : null
+          }])
+          .select("id")
+          .single();
+
+        if (insertDoc.error) {
+          await supabaseClient.storage.from(bucket).remove([caminho]);
+          throw insertDoc.error;
         }
 
-        var formData = new FormData();
-        formData.append("snapAction", CONFIG.actionUploadPrazoAnexo);
-        formData.append("prazoId", meta && meta.prazoId ? meta.prazoId : "");
-        formData.append("processo", meta && meta.processo ? meta.processo : "");
-        formData.append("cliente", meta && meta.cliente ? meta.cliente : "");
-        formData.append("enviadoPor", meta && meta.enviadoPor ? meta.enviadoPor : "");
-        formData.append("observacoes", meta && meta.observacoes ? meta.observacoes : "");
-        formData.append("arquivo", file);
-
-        var res = await fetch(workerUrl, {
-          method: "POST",
-          body: formData
-        });
-
-        var data = await safeJson(res);
-        if (!res.ok || (data && data.ok === false)) {
-          throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
-        }
-
-        return data;
+        return {
+          ok: true,
+          caminho: caminho,
+          documentoId: insertDoc.data ? insertDoc.data.id : null
+        };
       }
 
       async function carregarAnexosPrazo(prazoId) {
@@ -1975,25 +2154,40 @@
         target.innerHTML = '<div class="process-deadlines-empty">Carregando anexos...</div>';
 
         try {
-          var data = await fetchWorkerJson({
-            snapAction: CONFIG.actionListarPrazoAnexos,
-            prazoId: prazoId
-          });
+          var consulta = await supabaseClient
+            .from("documentos")
+            .select("id,nome_original,nome_armazenado,tamanho_bytes,enviado_por,bucket,caminho_storage,criado_em")
+            .eq("prazo_id", prazoId)
+            .order("criado_em", { ascending: false });
 
-          var anexos = Array.isArray(data.anexos) ? data.anexos : [];
+          if (consulta.error) throw consulta.error;
+
+          var anexos = Array.isArray(consulta.data) ? consulta.data : [];
           if (!anexos.length) {
             target.innerHTML = '<div class="process-deadlines-empty">Nenhum anexo vinculado a este prazo.</div>';
             return;
           }
 
-          target.innerHTML = anexos.map(function (anexo) {
+          var signedList = await Promise.all(anexos.map(async function (anexo) {
+            var signed = await supabaseClient.storage
+              .from(anexo.bucket)
+              .createSignedUrl(anexo.caminho_storage, 3600);
+
+            return {
+              anexo: anexo,
+              signedUrl: signed && signed.data ? signed.data.signedUrl : "#"
+            };
+          }));
+
+          target.innerHTML = signedList.map(function (item) {
+            var anexo = item.anexo;
             return ''
               + '<div class="prazo-anexo-item">'
               + '  <div class="prazo-anexo-meta">'
-              + '    <div class="prazo-anexo-nome">' + escapeHtml(anexo.nome_original || anexo.nome_arquivo || 'Arquivo') + '</div>'
+              + '    <div class="prazo-anexo-nome">' + escapeHtml(anexo.nome_original || anexo.nome_armazenado || 'Arquivo') + '</div>'
               + '    <div class="prazo-anexo-sub">Enviado por: ' + escapeHtml(anexo.enviado_por || '—') + ' • ' + escapeHtml(formatBytes(anexo.tamanho_bytes)) + '</div>'
               + '  </div>'
-              + '  <div><a class="btn-secondary small-btn" href="' + escapeHtmlAttr(anexo.signed_url || '#') + '" target="_blank" rel="noopener noreferrer">Abrir anexo</a></div>'
+              + '  <div><a class="btn-secondary small-btn" href="' + escapeHtmlAttr(item.signedUrl || '#') + '" target="_blank" rel="noopener noreferrer">Abrir anexo</a></div>'
               + '</div>';
           }).join('');
         } catch (err) {
@@ -2028,7 +2222,7 @@
               partes: item.partes,
               advogados: item.advogados,
               texto: item.texto,
-              prazoFinal: item.prazoFinal || "",
+              prazoFinal: state.deadlines[item.id] || "",
               raw: item._raw || {}
             };
           })
@@ -2049,6 +2243,18 @@
         setMessage("Exportação concluída.");
       }
 
+      function clearAllDeadlines() {
+        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+        state.deadlines = {};
+        saveDeadlines();
+        applyLocalFiltersAndRender();
+        if (state.selectedItem) {
+          renderDetails(state.selectedItem);
+        } else {
+          closeDetailsModal();
+        }
+        setMessage("Todos os prazos foram apagados.");
+      }
 
       function truncate(text, max) {
         var s = String(text || "");
