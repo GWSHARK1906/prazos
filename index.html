@@ -965,19 +965,41 @@
 
     const TEST_AUTH_EMAIL = "";
     const TEST_AUTH_PASSWORD = "";
+    const TEST_AUTH_SESSION_KEY = "supabase_test_auth_session_v1";
 
     async function ensureTestAuth() {
-      if (!TEST_AUTH_EMAIL || !TEST_AUTH_PASSWORD) {
-        throw new Error("Preencha TEST_AUTH_EMAIL e TEST_AUTH_PASSWORD no index.");
-      }
-
       var sessionResp = await supabaseClient.auth.getSession();
       if (sessionResp.error) throw sessionResp.error;
       if (sessionResp.data && sessionResp.data.session) return sessionResp.data.session;
 
+      var email = TEST_AUTH_EMAIL || "";
+      var password = TEST_AUTH_PASSWORD || "";
+
+      if (!email || !password) {
+        try {
+          var cached = sessionStorage.getItem(TEST_AUTH_SESSION_KEY);
+          if (cached) {
+            var parsed = JSON.parse(cached);
+            email = parsed && parsed.email ? parsed.email : "";
+            password = parsed && parsed.password ? parsed.password : "";
+          }
+        } catch (e) {}
+      }
+
+      if (!email || !password) {
+        email = window.prompt("Informe o e-mail do usuário test do Supabase:", email || "") || "";
+        if (!email) throw new Error("E-mail do usuário test não informado.");
+        password = window.prompt("Informe a senha do usuário test do Supabase:", password || "") || "";
+        if (!password) throw new Error("Senha do usuário test não informada.");
+
+        try {
+          sessionStorage.setItem(TEST_AUTH_SESSION_KEY, JSON.stringify({ email: email, password: password }));
+        } catch (e) {}
+      }
+
       var signInResp = await supabaseClient.auth.signInWithPassword({
-        email: TEST_AUTH_EMAIL,
-        password: TEST_AUTH_PASSWORD
+        email: email,
+        password: password
       });
 
       if (signInResp.error) throw signInResp.error;
@@ -994,17 +1016,6 @@
         if (!box) return;
         box.style.display = "block";
         box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
-      });
-
-      window.addEventListener("unhandledrejection", function (event) {
-        var reason = event && event.reason;
-        var message = reason && reason.message ? reason.message : String(reason || "falha desconhecida");
-        var box = document.getElementById("fatalError");
-        if (box) {
-          box.style.display = "block";
-          box.textContent = "Erro assíncrono do index: " + message;
-        }
-        alert("Erro: " + message);
       });
 
       var CONFIG = {
@@ -1068,6 +1079,10 @@
       };
 
       init();
+
+      ensureTestAuth().catch(function (err) {
+        console.warn("Auth test ainda não iniciada:", err);
+      });
 
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
@@ -1687,8 +1702,6 @@
         list.innerHTML = '<div class="process-deadlines-empty">Carregando prazos...</div>';
 
         try {
-          await ensureTestAuth();
-
           var result = await supabaseClient
             .from("prazos")
             .select("*")
@@ -1768,6 +1781,37 @@
       }
 
       async function salvarPrazoManual() {
+        if (!window.supabase || !supabaseClient) {
+          alert("Supabase não carregado.");
+          return;
+        }
+
+        if (!state.selectedItem) {
+          alert("Nenhuma publicação selecionada.");
+          return;
+        }
+
+        var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
+        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
+        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
+        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
+
+        var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
+        var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
+
+        var payload = {
+          processo: state.selectedItem.processo || "",
+          cliente: CONFIG.clientePadraoNome,
+          cliente_id: clienteIdParaPrazo,
+          processo_id: processoIdParaPrazo,
+          orgao_julgador: state.selectedItem.vara || "",
+          partes: state.selectedItem.partes || "",
+          prazo_inicial: prazoInicial,
+          prazo_seguro: prazoSeguro,
+          prazo_fatal: prazoFatal,
+          tarefa: tarefa
+        };
+
         var btnSalvar = document.getElementById("btnSalvarPrazoManual");
         if (btnSalvar) {
           btnSalvar.disabled = true;
@@ -1775,39 +1819,6 @@
         }
 
         try {
-          await ensureTestAuth();
-
-          if (!window.supabase || !supabaseClient) {
-            alert("Supabase não carregado.");
-            return;
-          }
-
-          if (!state.selectedItem) {
-            alert("Nenhuma publicação selecionada.");
-            return;
-          }
-
-          var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
-          var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
-          var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
-          var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
-
-          var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
-          var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
-
-          var payload = {
-            processo: state.selectedItem.processo || "",
-            cliente: CONFIG.clientePadraoNome,
-            cliente_id: clienteIdParaPrazo,
-            processo_id: processoIdParaPrazo,
-            orgao_julgador: state.selectedItem.vara || "",
-            partes: state.selectedItem.partes || "",
-            prazo_inicial: prazoInicial,
-            prazo_seguro: prazoSeguro,
-            prazo_fatal: prazoFatal,
-            tarefa: tarefa
-          };
-
           var result = await supabaseClient
             .from("prazos")
             .insert([payload]);
@@ -1933,7 +1944,6 @@
       }
 
       async function salvarCumprimentoPrazo() {
-        await ensureTestAuth();
         var prazoId = els.cumprimentoModal.getAttribute("data-prazo-id");
         var cumpridoEm = $("cumpridoEmInput") ? $("cumpridoEmInput").value.trim() : "";
         var cumprimentoDescricao = $("cumprimentoDescricaoInput") ? $("cumprimentoDescricaoInput").value.trim() : "";
@@ -1954,6 +1964,8 @@
         els.btnSalvarCumprimento.textContent = "Salvando...";
 
         try {
+          await ensureTestAuth();
+
           var result = await supabaseClient
             .from("prazos")
             .update({
@@ -2030,6 +2042,7 @@
 
       async function ensureClienteByNome(nomeCliente) {
         await ensureTestAuth();
+
         var nome = String(nomeCliente || "").trim() || CONFIG.clientePadraoNome;
 
         var existente = await supabaseClient
@@ -2053,6 +2066,7 @@
 
       async function ensureProcessoByNumero(numeroProcesso, clienteId) {
         await ensureTestAuth();
+
         var numero = String(numeroProcesso || "").trim();
         if (!numero) {
           throw new Error("Número do processo não informado para vincular o documento.");
@@ -2083,6 +2097,7 @@
 
       async function resolveRelationalIdsForPrazo(meta) {
         await ensureTestAuth();
+
         var prazoId = meta && meta.prazoId ? String(meta.prazoId) : "";
         if (!prazoId) {
           throw new Error("Prazo não identificado para vincular o documento.");
@@ -2139,7 +2154,6 @@
       }
 
       async function uploadPrazoAnexoArquivo(file, meta) {
-        await ensureTestAuth();
         if (!file) return null;
 
         var ids = await resolveRelationalIdsForPrazo(meta || {});
@@ -2189,13 +2203,14 @@
       }
 
       async function carregarAnexosPrazo(prazoId) {
-        await ensureTestAuth();
         var target = document.getElementById("prazoAnexos-" + prazoId);
         if (!target || !prazoId) return;
 
         target.innerHTML = '<div class="process-deadlines-empty">Carregando anexos...</div>';
 
         try {
+          await ensureTestAuth();
+
           var consulta = await supabaseClient
             .from("documentos")
             .select("id,nome_original,nome_armazenado,tamanho_bytes,enviado_por,bucket,caminho_storage,criado_em")
