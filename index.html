@@ -1107,7 +1107,7 @@
             </div>
             <div class="kv">
               <div class="key">Persistência</div>
-              <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
+              <div class="val">As publicações ficam gravadas no banco. Os prazos manuais desta grade permanecem no navegador.</div>
             </div>
             <div class="kv">
               <div class="key">Segurança</div>
@@ -1208,6 +1208,9 @@
       if (userEmailEl && user && user.email) {
         userEmailEl.textContent = user.email;
       }
+      window.dispatchEvent(new CustomEvent("snap-auth-ready", {
+        detail: { user: user || null }
+      }));
     }
 
     function showLogin() {
@@ -1327,6 +1330,8 @@
         actionListarPrazoAnexos: "listarPrazoAnexos",
         bucketDocumentos: "arquivos-processuais",
         clientePadraoNome: "Cliente não informado",
+        tablePublicacoes: "publicacoes",
+        fontePublicacoes: "SNAP",
         usarEndpointDetalhe: false
       };
 
@@ -1336,7 +1341,8 @@
         selectedItem: null,
         selectedPrazoForCumprimento: null,
         deadlines: loadDeadlines(),
-        loading: false
+        loading: false,
+        publicacoesCarregadasDoBanco: false
       };
 
       function $(id) {
@@ -1386,6 +1392,13 @@
         applyDateMask(els.desde);
         applyDateMask(els.ate);
         updateDashboard();
+        window.addEventListener("snap-auth-ready", handleAuthReady);
+        supabaseClient.auth.getSession().then(function (resp) {
+          var session = resp && resp.data && resp.data.session;
+          if (session && session.user) {
+            handleAuthReady();
+          }
+        });
 
         els.btnBuscar.addEventListener("click", handleBuscar);
         els.btnHoje.addEventListener("click", presetToday);
@@ -1460,6 +1473,12 @@
             });
           }
         });
+      }
+
+      function handleAuthReady() {
+        if (state.publicacoesCarregadasDoBanco) return;
+        state.publicacoesCarregadasDoBanco = true;
+        loadPublicacoesSalvas();
       }
 
       function persistWorkerUrl() {
@@ -1581,7 +1600,6 @@
 
         setLoading(true);
         setMessage("Consultando publicações via Worker...");
-        renderRows([]);
 
         try {
           var res = await fetch(workerUrl, {
@@ -1597,23 +1615,19 @@
           }
 
           var items = normalizeItems(data);
-          state.rawItems = items;
+          await persistirPublicacoesNoBanco(items);
+          await loadPublicacoesSalvas();
           state.selectedItem = null;
           closeDetailsModal();
-          applyLocalFiltersAndRender();
 
           els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit"
           });
 
-          setMessage(items.length + " publicação(ões) carregada(s).");
+          setMessage("Consulta concluída. Publicações novas foram agregadas ao histórico salvo.");
         } catch (err) {
           console.error(err);
-          state.rawItems = [];
-          state.filteredItems = [];
-          renderRows([]);
-          closeDetailsModal();
           setMessage("Falha na consulta: " + (err.message || err));
         } finally {
           setLoading(false);
@@ -1673,6 +1687,139 @@
             prazoFinal: state.deadlines[id] || ""
           };
         });
+      }
+
+      async function loadPublicacoesSalvas() {
+        try {
+          var result = await supabaseClient
+            .from(CONFIG.tablePublicacoes)
+            .select("*")
+            .order("data_publicacao", { ascending: false })
+            .order("criado_em", { ascending: false });
+
+          if (result.error) {
+            throw result.error;
+          }
+
+          state.rawItems = normalizeStoredPublicacoes(result.data || []);
+          applyLocalFiltersAndRender();
+          setMessage(state.rawItems.length
+            ? (state.rawItems.length + " publicação(ões) carregada(s) do banco.")
+            : "Nenhuma publicação salva no banco até o momento.");
+        } catch (err) {
+          console.error(err);
+          setMessage("Falha ao carregar histórico salvo: " + (err.message || err));
+        }
+      }
+
+      function normalizeStoredPublicacoes(rows) {
+        if (!Array.isArray(rows)) return [];
+
+        return rows.map(function (row, index) {
+          var raw = parseJsonSafely(row.raw_json || row.raw || row.metadados || null);
+          var id = String(row.id_externo || row.hash_unico || row.id || ("db_" + index));
+          var orgao = row.orgao || row.tribunal || "—";
+          var processo = row.processo_numero || row.processo || "—";
+          var texto = row.texto || "—";
+
+          return {
+            _raw: raw || row,
+            id: id,
+            formato: row.formato || "A",
+            semEfeitoIntimacao: row.sem_efeito_intimacao === true,
+            dataPublicacao: normalizeDateString(row.data_publicacao || row.dataPublicacao || ""),
+            diario: orgao,
+            tribunal: raw && raw.tribunal ? raw.tribunal : orgao,
+            processo: processo,
+            vara: raw && raw.vara ? raw.vara : (row.vara || ""),
+            classe: raw && raw.classe ? raw.classe : (row.classe || ""),
+            tipoAto: raw && raw.tipoAto ? raw.tipoAto : (row.tipo_ato || row.tipoAto || ""),
+            partes: raw && raw.partes ? raw.partes : (row.partes || ""),
+            advogados: raw && raw.advogados ? raw.advogados : (row.advogados || ""),
+            texto: raw && raw.texto ? raw.texto : texto,
+            prazoFinal: state.deadlines[id] || ""
+          };
+        });
+      }
+
+      async function persistirPublicacoesNoBanco(items) {
+        if (!Array.isArray(items) || !items.length) return;
+
+        var rows = [];
+        for (var i = 0; i < items.length; i++) {
+          rows.push(await buildPublicacaoRow(items[i]));
+        }
+
+        var result = await supabaseClient
+          .from(CONFIG.tablePublicacoes)
+          .upsert(rows, {
+            onConflict: "hash_unico",
+            ignoreDuplicates: true
+          });
+
+        if (result.error) {
+          throw result.error;
+        }
+      }
+
+      async function buildPublicacaoRow(item) {
+        var texto = String(item && item.texto ? item.texto : "");
+        var orgao = [item && item.tribunal ? item.tribunal : "", item && item.vara ? item.vara : ""]
+          .filter(Boolean)
+          .join(" | ") || (item && item.diario ? item.diario : "—");
+
+        return {
+          processo_numero: item && item.processo ? item.processo : "—",
+          data_publicacao: item && item.dataPublicacao ? item.dataPublicacao : null,
+          orgao: orgao,
+          texto: texto,
+          fonte: CONFIG.fontePublicacoes,
+          id_externo: getIdExternoValido(item && item.id ? item.id : ""),
+          hash_unico: await gerarHashUnico(
+            item && item.processo ? item.processo : "—",
+            item && item.dataPublicacao ? item.dataPublicacao : "",
+            texto
+          )
+        };
+      }
+
+      function getIdExternoValido(id) {
+        var value = String(id || "").trim();
+        if (!value || /^idx_/i.test(value)) return null;
+        return value;
+      }
+
+      async function gerarHashUnico(processoNumero, dataPublicacao, texto) {
+        var base = [
+          String(processoNumero || "").trim(),
+          String(dataPublicacao || "").trim(),
+          normalizarTextoParaHash(texto)
+        ].join("|");
+        return sha256Hex(base);
+      }
+
+      function normalizarTextoParaHash(texto) {
+        return String(texto || "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 200);
+      }
+
+      async function sha256Hex(text) {
+        var buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(text || "")));
+        return Array.from(new Uint8Array(buffer)).map(function (b) {
+          return b.toString(16).padStart(2, "0");
+        }).join("");
+      }
+
+      function parseJsonSafely(value) {
+        if (!value) return null;
+        if (typeof value === "object") return value;
+        try {
+          return JSON.parse(value);
+        } catch (e) {
+          return null;
+        }
       }
 
       function normalizeDateString(v) {
