@@ -1342,7 +1342,8 @@
         selectedPrazoForCumprimento: null,
         deadlines: loadDeadlines(),
         loading: false,
-        publicacoesCarregadasDoBanco: false
+        publicacoesCarregadasDoBanco: false,
+        publicacoesTemporarias: []
       };
 
       function $(id) {
@@ -1615,8 +1616,19 @@
           }
 
           var items = normalizeItems(data);
-          await persistirPublicacoesNoBanco(items);
-          await loadPublicacoesSalvas();
+          mergePublicacoesTemporarias(items);
+          applyPublicacoesAtivas();
+
+          try {
+            await persistirPublicacoesNoBanco(items);
+            await loadPublicacoesSalvas();
+            setMessage("Consulta concluída. Publicações novas foram agregadas ao histórico salvo.");
+          } catch (persistErr) {
+            console.error(persistErr);
+            applyPublicacoesAtivas();
+            setMessage("Consulta concluída. As publicações foram exibidas na tela, mas houve falha ao salvar no banco: " + (persistErr.message || persistErr));
+          }
+
           state.selectedItem = null;
           closeDetailsModal();
 
@@ -1624,8 +1636,6 @@
             hour: "2-digit",
             minute: "2-digit"
           });
-
-          setMessage("Consulta concluída. Publicações novas foram agregadas ao histórico salvo.");
         } catch (err) {
           console.error(err);
           setMessage("Falha na consulta: " + (err.message || err));
@@ -1689,6 +1699,49 @@
         });
       }
 
+      function mergePublicacoesTemporarias(items) {
+        if (!Array.isArray(items) || !items.length) return;
+
+        var map = new Map();
+
+        (state.publicacoesTemporarias || []).forEach(function (item, index) {
+          var key = getPublicacaoClientKey(item, index);
+          map.set(key, item);
+        });
+
+        items.forEach(function (item, index) {
+          var key = getPublicacaoClientKey(item, index);
+          if (!map.has(key)) map.set(key, item);
+        });
+
+        state.publicacoesTemporarias = Array.from(map.values()).sort(function (a, b) {
+          return String(b.dataPublicacao || "").localeCompare(String(a.dataPublicacao || ""));
+        });
+      }
+
+      function getPublicacaoClientKey(item, index) {
+        return [
+          item && item.processo ? item.processo : "",
+          item && item.dataPublicacao ? item.dataPublicacao : "",
+          normalizarTextoParaHash(item && item.texto ? item.texto : ""),
+          item && item.id ? item.id : ("idx_" + index)
+        ].join("|");
+      }
+
+      function applyPublicacoesAtivas() {
+        var fonte = (state.rawItems && state.rawItems.length)
+          ? state.rawItems
+          : (state.publicacoesTemporarias || []);
+
+        state.filteredItems = [];
+        renderRows([]);
+
+        if (!Array.isArray(fonte)) fonte = [];
+        if (state.rawItems !== fonte) state.rawItems = fonte.slice();
+
+        applyLocalFiltersAndRender();
+      }
+
       async function loadPublicacoesSalvas() {
         try {
           var result = await supabaseClient
@@ -1702,10 +1755,12 @@
           }
 
           state.rawItems = normalizeStoredPublicacoes(result.data || []);
-          applyLocalFiltersAndRender();
+          applyPublicacoesAtivas();
           setMessage(state.rawItems.length
             ? (state.rawItems.length + " publicação(ões) carregada(s) do banco.")
-            : "Nenhuma publicação salva no banco até o momento.");
+            : ((state.publicacoesTemporarias || []).length
+              ? ((state.publicacoesTemporarias || []).length + " publicação(ões) exibida(s) em memória.")
+              : "Nenhuma publicação salva no banco até o momento."));
         } catch (err) {
           console.error(err);
           setMessage("Falha ao carregar histórico salvo: " + (err.message || err));
