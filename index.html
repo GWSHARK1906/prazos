@@ -996,6 +996,17 @@
         box.textContent = "Erro no JavaScript do index: " + (event.message || "falha desconhecida");
       });
 
+      window.addEventListener("unhandledrejection", function (event) {
+        var reason = event && event.reason;
+        var message = reason && reason.message ? reason.message : String(reason || "falha desconhecida");
+        var box = document.getElementById("fatalError");
+        if (box) {
+          box.style.display = "block";
+          box.textContent = "Erro assíncrono do index: " + message;
+        }
+        alert("Erro: " + message);
+      });
+
       var CONFIG = {
         defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
         storageKeyDeadlines: "snap_tracker_deadlines_v2",
@@ -1665,7 +1676,6 @@
       }
 
       async function carregarPrazosDoProcessoModal(processo) {
-        await ensureTestAuth();
         var list = document.getElementById("processDeadlinesList");
         if (!list) return;
 
@@ -1677,6 +1687,8 @@
         list.innerHTML = '<div class="process-deadlines-empty">Carregando prazos...</div>';
 
         try {
+          await ensureTestAuth();
+
           var result = await supabaseClient
             .from("prazos")
             .select("*")
@@ -1756,38 +1768,6 @@
       }
 
       async function salvarPrazoManual() {
-        await ensureTestAuth();
-        if (!window.supabase || !supabaseClient) {
-          alert("Supabase não carregado.");
-          return;
-        }
-
-        if (!state.selectedItem) {
-          alert("Nenhuma publicação selecionada.");
-          return;
-        }
-
-        var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
-        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
-        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
-        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
-
-        var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
-        var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
-
-        var payload = {
-          processo: state.selectedItem.processo || "",
-          cliente: CONFIG.clientePadraoNome,
-          cliente_id: clienteIdParaPrazo,
-          processo_id: processoIdParaPrazo,
-          orgao_julgador: state.selectedItem.vara || "",
-          partes: state.selectedItem.partes || "",
-          prazo_inicial: prazoInicial,
-          prazo_seguro: prazoSeguro,
-          prazo_fatal: prazoFatal,
-          tarefa: tarefa
-        };
-
         var btnSalvar = document.getElementById("btnSalvarPrazoManual");
         if (btnSalvar) {
           btnSalvar.disabled = true;
@@ -1795,6 +1775,39 @@
         }
 
         try {
+          await ensureTestAuth();
+
+          if (!window.supabase || !supabaseClient) {
+            alert("Supabase não carregado.");
+            return;
+          }
+
+          if (!state.selectedItem) {
+            alert("Nenhuma publicação selecionada.");
+            return;
+          }
+
+          var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
+          var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
+          var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
+          var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
+
+          var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
+          var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
+
+          var payload = {
+            processo: state.selectedItem.processo || "",
+            cliente: CONFIG.clientePadraoNome,
+            cliente_id: clienteIdParaPrazo,
+            processo_id: processoIdParaPrazo,
+            orgao_julgador: state.selectedItem.vara || "",
+            partes: state.selectedItem.partes || "",
+            prazo_inicial: prazoInicial,
+            prazo_seguro: prazoSeguro,
+            prazo_fatal: prazoFatal,
+            tarefa: tarefa
+          };
+
           var result = await supabaseClient
             .from("prazos")
             .insert([payload]);
