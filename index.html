@@ -35,9 +35,184 @@
     body{min-height:100vh}
     body.modal-open{overflow:hidden}
 
+    /* ── LOGIN OVERLAY ── */
+    #loginOverlay{
+      position:fixed;
+      inset:0;
+      background:rgba(20,14,10,.72);
+      backdrop-filter:blur(6px);
+      -webkit-backdrop-filter:blur(6px);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:99999;
+      padding:24px;
+    }
+
+    #loginOverlay.hidden{
+      display:none;
+    }
+
+    .login-panel{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:24px;
+      box-shadow:0 40px 100px rgba(0,0,0,.32);
+      padding:40px 36px 36px;
+      width:min(440px, 100%);
+      display:flex;
+      flex-direction:column;
+      gap:0;
+    }
+
+    .login-eyebrow{
+      font-size:11px;
+      letter-spacing:.18em;
+      text-transform:uppercase;
+      color:var(--muted);
+      margin-bottom:10px;
+    }
+
+    .login-title{
+      font-size:28px;
+      font-weight:700;
+      letter-spacing:-.04em;
+      margin:0 0 6px;
+      line-height:1.1;
+    }
+
+    .login-sub{
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.55;
+      margin-bottom:28px;
+    }
+
+    .login-field{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-bottom:14px;
+    }
+
+    .login-field label{
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--muted);
+    }
+
+    .login-field input{
+      width:100%;
+      border:1px solid var(--line);
+      background:#faf8f4;
+      color:var(--text);
+      border-radius:14px;
+      min-height:48px;
+      padding:12px 16px;
+      font-family:var(--sans);
+      font-size:15px;
+      outline:none;
+      transition:.18s ease;
+    }
+
+    .login-field input:focus{
+      border-color:var(--accent);
+      background:#fff;
+      box-shadow:0 0 0 4px rgba(139,30,30,.09);
+    }
+
+    #loginError{
+      background:#fff0f0;
+      border:1px solid #ebc8c8;
+      color:var(--danger);
+      border-radius:12px;
+      padding:10px 14px;
+      font-size:13px;
+      line-height:1.5;
+      display:none;
+      margin-bottom:14px;
+    }
+
+    #btnLogin{
+      width:100%;
+      min-height:50px;
+      border:none;
+      border-radius:14px;
+      background:linear-gradient(180deg, var(--accent-2), var(--accent));
+      color:#fff;
+      font-family:var(--sans);
+      font-size:15px;
+      font-weight:700;
+      cursor:pointer;
+      box-shadow:0 10px 28px rgba(139,30,30,.26);
+      transition:.18s ease;
+      margin-top:6px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:10px;
+    }
+
+    #btnLogin:hover:not(:disabled){transform:translateY(-1px)}
+    #btnLogin:disabled{opacity:.7;cursor:not-allowed}
+
+    .login-footer{
+      margin-top:20px;
+      font-size:12px;
+      color:var(--muted);
+      text-align:center;
+      line-height:1.6;
+    }
+
+    /* ── APP SHELL ── */
+    #appShell{
+      display:none;
+    }
+
+    #appShell.visible{
+      display:block;
+    }
+
+    /* ── TOPBAR DO APP com botão de logout ── */
+    .user-bar{
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:10px;
+      margin-bottom:10px;
+      padding:0 2px;
+    }
+
+    .user-bar-email{
+      font-size:12px;
+      color:var(--muted);
+      font-family:var(--mono);
+    }
+
+    #btnLogout{
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--muted);
+      border-radius:12px;
+      min-height:34px;
+      padding:0 14px;
+      font-family:var(--sans);
+      font-size:12px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.18s ease;
+    }
+
+    #btnLogout:hover{
+      background:var(--panel-2);
+      color:var(--text);
+    }
+
+    /* ── RESTO DO APP (igual ao original) ── */
     .app{
       width:min(1480px, calc(100% - 32px));
-      margin:24px auto 40px;
+      margin:8px auto 40px;
     }
 
     .topbar{
@@ -504,7 +679,6 @@
       cursor:pointer;
     }
 
-
     .deadline-manual-wrap{
       margin-top:18px;
       padding:18px;
@@ -534,7 +708,6 @@
     .deadline-manual-grid .field.span-full{
       grid-column:1 / -1;
     }
-
 
     .process-deadlines-wrap{
       margin-top:18px;
@@ -724,189 +897,235 @@
   </style>
 </head>
 <body>
-  <div class="app">
-    <div id="fatalError" class="error-banner"></div>
 
-    <section class="topbar">
-      <div class="hero">
-        <div class="eyebrow">Tracker de Prazos • SNAP</div>
-        <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
-        <p>
-          Interface refeita para consultar publicações via Worker, revisar conteúdo,
-          identificar processo, vara, partes e registrar prazo final no próprio painel.
-        </p>
+  <!-- ══════════════════════════════════════════════════════════
+       LOGIN OVERLAY — bloqueia tudo até autenticação
+  ══════════════════════════════════════════════════════════ -->
+  <div id="loginOverlay">
+    <div class="login-panel">
+      <div class="login-eyebrow">Tracker de Prazos • SNAP</div>
+      <h2 class="login-title">Acesso restrito</h2>
+      <p class="login-sub">Informe suas credenciais para continuar.</p>
+
+      <div class="login-field">
+        <label for="loginEmail">E-mail</label>
+        <input type="email" id="loginEmail" placeholder="seu@email.com" autocomplete="username" />
       </div>
 
-      <div class="status-card">
-        <div class="filters-title">Painel rápido</div>
-        <div class="status-grid">
-          <div class="mini">
-            <div class="k">Conexão</div>
-            <div class="v" id="connStatus">Aguardando</div>
-          </div>
-          <div class="mini">
-            <div class="k">Resultados</div>
-            <div class="v" id="resultsCount">0</div>
-          </div>
-          <div class="mini">
-            <div class="k">Prazos salvos</div>
-            <div class="v" id="savedDeadlinesCount">0</div>
-          </div>
-          <div class="mini">
-            <div class="k">Última busca</div>
-            <div class="v" id="lastFetch">—</div>
-          </div>
-        </div>
-        <div id="globalMessage" class="footer-note">
-          Configure o endpoint do Worker e faça a primeira consulta.
-        </div>
-      </div>
-    </section>
-
-    <section class="filters">
-      <div class="filters-header">
-        <div class="filters-title">Filtros de busca</div>
-        <div class="actions">
-          <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
-          <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
-          <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
-          <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
-          <button class="btn-danger" id="btnLimpar" type="button">Limpar filtros</button>
-        </div>
+      <div class="login-field">
+        <label for="loginSenha">Senha</label>
+        <input type="password" id="loginSenha" placeholder="••••••••" autocomplete="current-password" />
       </div>
 
-      <div class="filters-grid">
-        <div class="field">
-          <label for="desde">Desde</label>
-          <input type="text" id="desde" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
-        </div>
+      <div id="loginError"></div>
 
-        <div class="field">
-          <label for="ate">Até</label>
-          <input type="text" id="ate" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
-        </div>
+      <button type="button" id="btnLogin">
+        <span id="btnLoginLabel">Entrar</span>
+      </button>
 
-        <div class="field">
-          <label for="limit">Limite</label>
-          <select id="limit">
-            <option value="25">25</option>
-            <option value="50" selected>50</option>
-            <option value="100">100</option>
-            <option value="200">200</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="comTexto">Trazer texto</label>
-          <select id="comTexto">
-            <option value="true" selected>Sim</option>
-            <option value="false">Não</option>
-          </select>
-        </div>
-
-        <div class="field span-2">
-          <label for="buscaLivre">Filtro local por termo</label>
-          <input
-            type="text"
-            id="buscaLivre"
-            placeholder="processo, parte, vara, tribunal, trecho do texto..."
-          />
-        </div>
-
-        <div class="field span-2">
-          <label for="somenteComPrazo">Exibição</label>
-          <select id="somenteComPrazo">
-            <option value="todos" selected>Todas as publicações</option>
-            <option value="comPrazo">Somente com prazo salvo</option>
-            <option value="semPrazo">Somente sem prazo salvo</option>
-          </select>
-        </div>
-
-        <div class="field span-6" style="display:none;">
-          <label for="workerUrl">Endpoint do Worker</label>
-          <input
-            type="text"
-            id="workerUrl"
-            placeholder="https://seu-worker.seudominio.workers.dev"
-          />
-        </div>
+      <div class="login-footer">
+        Acesso exclusivo para usuários autorizados.<br>
+        Os dados são protegidos por autenticação Supabase.
       </div>
-
-      <div class="footer-note" style="display:none;">
-        O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
-      </div>
-    </section>
-
-    <section class="results">
-      <div class="results-head">
-        <div class="results-title">Publicações encontradas</div>
-        <div class="actions">
-          <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
-          <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
-        </div>
-      </div>
-
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="width:130px;">Data</th>
-              <th style="width:160px;">Diário / Tribunal</th>
-              <th style="width:210px;">Processo / Vara</th>
-              <th style="width:260px;">Partes / Classe</th>
-              <th>Texto</th>
-              <th style="width:200px;">Prazo</th>
-              <th style="width:180px;">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="resultsBody"></tbody>
-        </table>
-      </div>
-    </section>
-
-    <div class="empty" id="emptyState">
-      Nenhuma publicação para exibir no momento.
     </div>
-
-    <section class="layout-bottom">
-      <div class="drawer">
-        <h2>Detalhes da publicação</h2>
-        <div class="muted">
-          Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo em janela frontal.
-        </div>
-        <div class="details-box" id="detailsBox">
-          <div class="details-empty">Os detalhes agora são exibidos em uma janela modal na frente da tela.</div>
-        </div>
-      </div>
-
-      <div class="drawer">
-        <h2>Regras do prazo</h2>
-        <div class="muted">
-          O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
-          O prazo final pode ser lançado manualmente em cada linha.
-        </div>
-        <div class="details-box">
-          <div class="kv">
-            <div class="key">Termo inicial</div>
-            <div class="val">Data da publicação</div>
-          </div>
-          <div class="kv">
-            <div class="key">Persistência</div>
-            <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
-          </div>
-          <div class="kv">
-            <div class="key">Segurança</div>
-            <div class="val">Senha da API não fica exposta no front-end.</div>
-          </div>
-          <div class="kv">
-            <div class="key">Busca</div>
-            <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       APP SHELL — só aparece após login
+  ══════════════════════════════════════════════════════════ -->
+  <div id="appShell">
+    <div class="app">
+      <div class="user-bar">
+        <span class="user-bar-email" id="userEmail"></span>
+        <button type="button" id="btnLogout">Sair</button>
+      </div>
+
+      <div id="fatalError" class="error-banner"></div>
+
+      <section class="topbar">
+        <div class="hero">
+          <div class="eyebrow">Tracker de Prazos • SNAP</div>
+          <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
+          <p>
+            Interface refeita para consultar publicações via Worker, revisar conteúdo,
+            identificar processo, vara, partes e registrar prazo final no próprio painel.
+          </p>
+        </div>
+
+        <div class="status-card">
+          <div class="filters-title">Painel rápido</div>
+          <div class="status-grid">
+            <div class="mini">
+              <div class="k">Conexão</div>
+              <div class="v" id="connStatus">Aguardando</div>
+            </div>
+            <div class="mini">
+              <div class="k">Resultados</div>
+              <div class="v" id="resultsCount">0</div>
+            </div>
+            <div class="mini">
+              <div class="k">Prazos salvos</div>
+              <div class="v" id="savedDeadlinesCount">0</div>
+            </div>
+            <div class="mini">
+              <div class="k">Última busca</div>
+              <div class="v" id="lastFetch">—</div>
+            </div>
+          </div>
+          <div id="globalMessage" class="footer-note">
+            Configure o endpoint do Worker e faça a primeira consulta.
+          </div>
+        </div>
+      </section>
+
+      <section class="filters">
+        <div class="filters-header">
+          <div class="filters-title">Filtros de busca</div>
+          <div class="actions">
+            <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
+            <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
+            <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
+            <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
+            <button class="btn-danger" id="btnLimpar" type="button">Limpar filtros</button>
+          </div>
+        </div>
+
+        <div class="filters-grid">
+          <div class="field">
+            <label for="desde">Desde</label>
+            <input type="text" id="desde" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
+          </div>
+
+          <div class="field">
+            <label for="ate">Até</label>
+            <input type="text" id="ate" placeholder="DD/MM/YYYY" inputmode="numeric" maxlength="10" />
+          </div>
+
+          <div class="field">
+            <label for="limit">Limite</label>
+            <select id="limit">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="comTexto">Trazer texto</label>
+            <select id="comTexto">
+              <option value="true" selected>Sim</option>
+              <option value="false">Não</option>
+            </select>
+          </div>
+
+          <div class="field span-2">
+            <label for="buscaLivre">Filtro local por termo</label>
+            <input
+              type="text"
+              id="buscaLivre"
+              placeholder="processo, parte, vara, tribunal, trecho do texto..."
+            />
+          </div>
+
+          <div class="field span-2">
+            <label for="somenteComPrazo">Exibição</label>
+            <select id="somenteComPrazo">
+              <option value="todos" selected>Todas as publicações</option>
+              <option value="comPrazo">Somente com prazo salvo</option>
+              <option value="semPrazo">Somente sem prazo salvo</option>
+            </select>
+          </div>
+
+          <div class="field span-6" style="display:none;">
+            <label for="workerUrl">Endpoint do Worker</label>
+            <input
+              type="text"
+              id="workerUrl"
+              placeholder="https://seu-worker.seudominio.workers.dev"
+            />
+          </div>
+        </div>
+
+        <div class="footer-note" style="display:none;">
+          O front não envia senha da SNAP. A autenticação deve ocorrer no Worker com secrets.
+        </div>
+      </section>
+
+      <section class="results">
+        <div class="results-head">
+          <div class="results-title">Publicações encontradas</div>
+          <div class="actions">
+            <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
+            <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:130px;">Data</th>
+                <th style="width:160px;">Diário / Tribunal</th>
+                <th style="width:210px;">Processo / Vara</th>
+                <th style="width:260px;">Partes / Classe</th>
+                <th>Texto</th>
+                <th style="width:200px;">Prazo</th>
+                <th style="width:180px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="resultsBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <div class="empty" id="emptyState">
+        Nenhuma publicação para exibir no momento.
+      </div>
+
+      <section class="layout-bottom">
+        <div class="drawer">
+          <h2>Detalhes da publicação</h2>
+          <div class="muted">
+            Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo em janela frontal.
+          </div>
+          <div class="details-box" id="detailsBox">
+            <div class="details-empty">Os detalhes agora são exibidos em uma janela modal na frente da tela.</div>
+          </div>
+        </div>
+
+        <div class="drawer">
+          <h2>Regras do prazo</h2>
+          <div class="muted">
+            O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
+            O prazo final pode ser lançado manualmente em cada linha.
+          </div>
+          <div class="details-box">
+            <div class="kv">
+              <div class="key">Termo inicial</div>
+              <div class="val">Data da publicação</div>
+            </div>
+            <div class="kv">
+              <div class="key">Persistência</div>
+              <div class="val">Os prazos ficam gravados no navegador (localStorage).</div>
+            </div>
+            <div class="kv">
+              <div class="key">Segurança</div>
+              <div class="val">Senha da API não fica exposta no front-end.</div>
+            </div>
+            <div class="kv">
+              <div class="key">Busca</div>
+              <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAIS
+  ══════════════════════════════════════════════════════════ -->
   <div id="detailsModal" class="modal-overlay" aria-hidden="true">
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
       <div class="modal-head">
@@ -919,7 +1138,6 @@
       <div id="detailsModalContent"></div>
     </div>
   </div>
-
 
   <div id="cumprimentoModal" class="modal-overlay" aria-hidden="true">
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="cumprimentoModalTitle">
@@ -956,58 +1174,139 @@
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       SCRIPTS
+  ══════════════════════════════════════════════════════════ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const supabaseClient = supabase.createClient(
       "https://lvvichuirvzngdudepso.supabase.co",
       "sb_publishable_f2xgZqUvNlsGNzsdd9eU8Q_qHFVlSC7"
     );
-
-    const TEST_AUTH_EMAIL = "";
-    const TEST_AUTH_PASSWORD = "";
-    const TEST_AUTH_SESSION_KEY = "supabase_test_auth_session_v1";
-
-    async function ensureTestAuth() {
-      var sessionResp = await supabaseClient.auth.getSession();
-      if (sessionResp.error) throw sessionResp.error;
-      if (sessionResp.data && sessionResp.data.session) return sessionResp.data.session;
-
-      var email = TEST_AUTH_EMAIL || "";
-      var password = TEST_AUTH_PASSWORD || "";
-
-      if (!email || !password) {
-        try {
-          var cached = sessionStorage.getItem(TEST_AUTH_SESSION_KEY);
-          if (cached) {
-            var parsed = JSON.parse(cached);
-            email = parsed && parsed.email ? parsed.email : "";
-            password = parsed && parsed.password ? parsed.password : "";
-          }
-        } catch (e) {}
-      }
-
-      if (!email || !password) {
-        email = window.prompt("Informe o e-mail do usuário test do Supabase:", email || "") || "";
-        if (!email) throw new Error("E-mail do usuário test não informado.");
-        password = window.prompt("Informe a senha do usuário test do Supabase:", password || "") || "";
-        if (!password) throw new Error("Senha do usuário test não informada.");
-
-        try {
-          sessionStorage.setItem(TEST_AUTH_SESSION_KEY, JSON.stringify({ email: email, password: password }));
-        } catch (e) {}
-      }
-
-      var signInResp = await supabaseClient.auth.signInWithPassword({
-        email: email,
-        password: password
-      });
-
-      if (signInResp.error) throw signInResp.error;
-      return signInResp.data ? signInResp.data.session : null;
-    }
   </script>
 
   <script>
+  // ════════════════════════════════════════════════════════════
+  // MÓDULO DE AUTENTICAÇÃO
+  // ════════════════════════════════════════════════════════════
+  (function () {
+    "use strict";
+
+    var loginOverlay  = document.getElementById("loginOverlay");
+    var appShell      = document.getElementById("appShell");
+    var btnLogin      = document.getElementById("btnLogin");
+    var btnLoginLabel = document.getElementById("btnLoginLabel");
+    var loginEmail    = document.getElementById("loginEmail");
+    var loginSenha    = document.getElementById("loginSenha");
+    var loginError    = document.getElementById("loginError");
+    var btnLogout     = document.getElementById("btnLogout");
+    var userEmailEl   = document.getElementById("userEmail");
+
+    function showApp(user) {
+      loginOverlay.classList.add("hidden");
+      appShell.classList.add("visible");
+      if (userEmailEl && user && user.email) {
+        userEmailEl.textContent = user.email;
+      }
+    }
+
+    function showLogin() {
+      loginOverlay.classList.remove("hidden");
+      appShell.classList.remove("visible");
+    }
+
+    function setLoginLoading(on) {
+      btnLogin.disabled = on;
+      btnLoginLabel.textContent = on ? "Entrando..." : "Entrar";
+    }
+
+    function showLoginError(msg) {
+      loginError.style.display = "block";
+      loginError.textContent = msg || "Erro ao autenticar.";
+    }
+
+    function hideLoginError() {
+      loginError.style.display = "none";
+      loginError.textContent = "";
+    }
+
+    // Verificar sessão existente ao carregar
+    supabaseClient.auth.getSession().then(function (resp) {
+      var session = resp && resp.data && resp.data.session;
+      if (session && session.user) {
+        showApp(session.user);
+      } else {
+        showLogin();
+      }
+    });
+
+    // Escutar mudanças de estado de auth
+    supabaseClient.auth.onAuthStateChange(function (event, session) {
+      if (event === "SIGNED_IN" && session && session.user) {
+        showApp(session.user);
+      } else if (event === "SIGNED_OUT") {
+        showLogin();
+      }
+    });
+
+    // Login
+    btnLogin.addEventListener("click", async function () {
+      hideLoginError();
+      var email = (loginEmail.value || "").trim();
+      var senha = (loginSenha.value || "").trim();
+
+      if (!email || !senha) {
+        showLoginError("Preencha e-mail e senha.");
+        return;
+      }
+
+      setLoginLoading(true);
+
+      try {
+        var resp = await supabaseClient.auth.signInWithPassword({
+          email: email,
+          password: senha
+        });
+
+        if (resp.error) {
+          showLoginError(
+            resp.error.message === "Invalid login credentials"
+              ? "E-mail ou senha incorretos."
+              : resp.error.message
+          );
+          return;
+        }
+
+        // showApp é chamado pelo onAuthStateChange
+      } catch (err) {
+        showLoginError("Erro inesperado: " + (err && err.message ? err.message : err));
+      } finally {
+        setLoginLoading(false);
+      }
+    });
+
+    // Enter no campo de senha faz login
+    loginSenha.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") btnLogin.click();
+    });
+
+    // Enter no e-mail move para senha
+    loginEmail.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") loginSenha.focus();
+    });
+
+    // Logout
+    btnLogout.addEventListener("click", async function () {
+      await supabaseClient.auth.signOut();
+    });
+
+  })();
+  </script>
+
+  <script>
+  // ════════════════════════════════════════════════════════════
+  // MÓDULO PRINCIPAL DO APP (igual ao original)
+  // ════════════════════════════════════════════════════════════
     (function () {
       "use strict";
 
@@ -1080,10 +1379,6 @@
 
       init();
 
-      ensureTestAuth().catch(function (err) {
-        console.warn("Auth test ainda não iniciada:", err);
-      });
-
       function init() {
         els.workerUrl.value = CONFIG.defaultWorkerUrl;
         localStorage.setItem(CONFIG.storageKeyWorkerUrl, CONFIG.defaultWorkerUrl);
@@ -1131,7 +1426,6 @@
             closeCumprimentoModal();
             return;
           }
-
           if (e.key === "Escape" && els.detailsModal.classList.contains("show")) {
             closeDetailsModal();
           }
@@ -1218,7 +1512,6 @@
         var iso = brToIso(baseStr);
         var d = new Date(iso + "T12:00:00");
         d.setDate(d.getDate() + deltaDays);
-
         var y = d.getFullYear();
         var m = String(d.getMonth() + 1).padStart(2, "0");
         var day = String(d.getDate()).padStart(2, "0");
@@ -1349,7 +1642,6 @@
 
         return arr.map(function (item, index) {
           var id = String(item.id || item.idPublicacao || item.codigo || ("idx_" + index));
-
           var dataPublicacao  = normalizeDateString(item.dataPublicacao || "");
           var tribunal        = item.tribunal  || "—";
           var processo        = item.numeroProcesso || "—";
@@ -1361,7 +1653,6 @@
           var texto           = item.texto      || "—";
           var semEfeito       = item.semEfeitoIntimacao === true;
           var formato         = item.formato    || "A";
-
           var diario = tribunal;
 
           return {
@@ -1387,15 +1678,12 @@
       function normalizeDateString(v) {
         if (!v) return "";
         if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
-
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(v)) {
           var p = v.split("/");
           return p[2] + "-" + p[1] + "-" + p[0];
         }
-
         var date = new Date(v);
         if (Number.isNaN(date.getTime())) return String(v);
-
         var y = date.getFullYear();
         var m = String(date.getMonth() + 1).padStart(2, "0");
         var d = String(date.getDate()).padStart(2, "0");
@@ -1414,25 +1702,18 @@
       function brToIso(v) {
         if (!v) return "";
         var s = String(v).trim();
-
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
           var p = s.split("/");
           return p[2] + "-" + p[1] + "-" + p[0];
         }
-
-        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-          return s;
-        }
-
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
         return "";
       }
 
       function applyDateMask(input) {
         if (!input) return;
-
         input.addEventListener("input", function (e) {
           var v = e.target.value.replace(/\D/g, "").slice(0, 8);
-
           if (v.length >= 5) {
             e.target.value = v.slice(0, 2) + "/" + v.slice(2, 4) + "/" + v.slice(4);
           } else if (v.length >= 3) {
@@ -1441,19 +1722,12 @@
             e.target.value = v;
           }
         });
-
         input.addEventListener("blur", function (e) {
           var s = e.target.value.trim();
           if (!s) return;
-
-          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
-            return;
-          }
-
+          if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return;
           var iso = brToIso(s);
-          if (iso) {
-            e.target.value = formatDateBR(iso);
-          }
+          if (iso) e.target.value = formatDateBR(iso);
         });
       }
 
@@ -1465,19 +1739,10 @@
         if (q) {
           items = items.filter(function (item) {
             var blob = [
-              item.id,
-              item.dataPublicacao,
-              item.tribunal,
-              item.processo,
-              item.vara,
-              item.classe,
-              item.tipoAto,
-              item.partes,
-              item.advogados,
-              item.texto,
-              JSON.stringify(item._raw || {})
+              item.id, item.dataPublicacao, item.tribunal, item.processo,
+              item.vara, item.classe, item.tipoAto, item.partes,
+              item.advogados, item.texto, JSON.stringify(item._raw || {})
             ].join(" ").toLowerCase();
-
             return blob.indexOf(q) >= 0;
           });
         }
@@ -1502,15 +1767,11 @@
         }
 
         els.emptyState.style.display = "none";
-
         var frag = document.createDocumentFragment();
 
         items.forEach(function (item) {
           var tr = document.createElement("tr");
-
-          if (item.semEfeitoIntimacao) {
-            tr.classList.add("sem-efeito");
-          }
+          if (item.semEfeitoIntimacao) tr.classList.add("sem-efeito");
 
           var prazo = state.deadlines[item.id] || "";
           var badgeClass = prazo ? "ok" : "warn";
@@ -1529,7 +1790,7 @@
             }
           }
 
-          var varaTexto = item.vara || "";
+          var varaTexto   = item.vara || "";
           var classeTexto = item.classe || "";
           var partesTexto = item.partes || "—";
 
@@ -1576,16 +1837,12 @@
           input.addEventListener("change", function (e) {
             var id = e.target.getAttribute("data-deadline-id");
             var value = e.target.value || "";
-
             if (value) state.deadlines[id] = value;
             else delete state.deadlines[id];
-
             saveDeadlines();
-
             state.rawItems = state.rawItems.map(function (i) {
               return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
             });
-
             applyLocalFiltersAndRender();
             setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
           });
@@ -1596,7 +1853,6 @@
             var id = e.target.getAttribute("data-detail-id");
             var item = state.rawItems.find(function (x) { return x.id === id; });
             if (!item) return;
-
             state.selectedItem = item;
             renderDetails(item);
           });
@@ -1607,7 +1863,6 @@
             var id = e.target.getAttribute("data-copy-id");
             var item = state.rawItems.find(function (x) { return x.id === id; });
             if (!item) return;
-
             var text = [
               "ID: " + item.id,
               "Data: " + formatDateBR(item.dataPublicacao),
@@ -1623,7 +1878,6 @@
               "",
               item.texto || ""
             ].join("\n");
-
             try {
               await navigator.clipboard.writeText(text);
               setMessage("Texto da publicação " + id + " copiado.");
@@ -1636,7 +1890,6 @@
 
       function renderDetails(item) {
         if (!item) return;
-
         var prazo = state.deadlines[item.id] || "—";
 
         els.detailsModalContent.innerHTML = ''
@@ -1721,7 +1974,6 @@
 
           list.innerHTML = result.data.map(function (prazo) {
             var status = getPrazoStatus(prazo);
-
             return ''
               + '<div class="process-deadline-card">'
               + '  <div class="process-deadline-card-top">'
@@ -1758,23 +2010,19 @@
       function toggleManualDeadlineForm(show) {
         var wrap = document.getElementById("deadlineManualWrap");
         if (!wrap) return;
-
         if (show) {
           wrap.classList.add("show");
-
           var prazoInicialInput = document.getElementById("prazoInicialManual");
-          var prazoSeguroInput = document.getElementById("prazoSeguroManual");
-          var prazoFatalInput = document.getElementById("prazoFatalManual");
-
+          var prazoSeguroInput  = document.getElementById("prazoSeguroManual");
+          var prazoFatalInput   = document.getElementById("prazoFatalManual");
           if (prazoInicialInput) {
             applyDateMask(prazoInicialInput);
             if (!prazoInicialInput.value && state.selectedItem && state.selectedItem.dataPublicacao) {
               prazoInicialInput.value = getNextBusinessDayBR(state.selectedItem.dataPublicacao);
             }
           }
-
           if (prazoSeguroInput) applyDateMask(prazoSeguroInput);
-          if (prazoFatalInput) applyDateMask(prazoFatalInput);
+          if (prazoFatalInput)  applyDateMask(prazoFatalInput);
         } else {
           wrap.classList.remove("show");
         }
@@ -1785,19 +2033,18 @@
           alert("Supabase não carregado.");
           return;
         }
-
         if (!state.selectedItem) {
           alert("Nenhuma publicação selecionada.");
           return;
         }
 
         var prazoInicial = document.getElementById("prazoInicialManual") ? document.getElementById("prazoInicialManual").value.trim() : "";
-        var prazoSeguro = document.getElementById("prazoSeguroManual") ? document.getElementById("prazoSeguroManual").value.trim() : "";
-        var prazoFatal = document.getElementById("prazoFatalManual") ? document.getElementById("prazoFatalManual").value.trim() : "";
-        var tarefa = document.getElementById("tarefaPrazoManual") ? document.getElementById("tarefaPrazoManual").value.trim() : "";
+        var prazoSeguro  = document.getElementById("prazoSeguroManual")  ? document.getElementById("prazoSeguroManual").value.trim()  : "";
+        var prazoFatal   = document.getElementById("prazoFatalManual")   ? document.getElementById("prazoFatalManual").value.trim()   : "";
+        var tarefa       = document.getElementById("tarefaPrazoManual")  ? document.getElementById("tarefaPrazoManual").value.trim()  : "";
 
-        var clienteIdParaPrazo = await ensureClienteByNome(CONFIG.clientePadraoNome);
-        var processoIdParaPrazo = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
+        var clienteIdParaPrazo   = await ensureClienteByNome(CONFIG.clientePadraoNome);
+        var processoIdParaPrazo  = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
 
         var payload = {
           processo: state.selectedItem.processo || "",
@@ -1844,14 +2091,11 @@
 
       function getNextBusinessDayBR(isoDate) {
         if (!isoDate || !/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "";
-
         var d = new Date(isoDate + "T12:00:00");
         d.setDate(d.getDate() + 1);
-
         while (d.getDay() === 0 || d.getDay() === 6) {
           d.setDate(d.getDate() + 1);
         }
-
         var y = d.getFullYear();
         var m = String(d.getMonth() + 1).padStart(2, "0");
         var day = String(d.getDate()).padStart(2, "0");
@@ -1860,19 +2104,15 @@
 
       function parsePrazoDate(value) {
         if (!value) return null;
-
         var s = String(value).trim();
-
         if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
           var iso = s.split("-");
           return new Date(Number(iso[0]), Number(iso[1]) - 1, Number(iso[2]), 0, 0, 0, 0);
         }
-
         if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
           var br = s.split("/");
           return new Date(Number(br[2]), Number(br[1]) - 1, Number(br[0]), 0, 0, 0, 0);
         }
-
         var d = new Date(s);
         if (Number.isNaN(d.getTime())) return null;
         return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
@@ -1882,47 +2122,37 @@
         if (prazo && (prazo.cumprido === true || prazo.cumprido_em || prazo.data_cumprimento)) {
           return { className: "cumprido", label: "🟢 CUMPRIDO" };
         }
-
         var prazoFatal = parsePrazoDate(prazo && prazo.prazo_fatal);
-        if (!prazoFatal) {
-          return { className: "no-prazo", label: "NO PRAZO" };
-        }
+        if (!prazoFatal) return { className: "no-prazo", label: "NO PRAZO" };
 
         var hoje = new Date();
         hoje = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0, 0);
-
         var diffMs = prazoFatal.getTime() - hoje.getTime();
         var diasRestantes = Math.floor(diffMs / 86400000);
 
-        if (diasRestantes < 0) {
-          return { className: "vencido", label: "🔴 VENCIDO" };
-        }
-
-        if (diasRestantes <= 3) {
-          return { className: "proximo", label: "🟡 PRÓXIMO DO VENCIMENTO" };
-        }
-
+        if (diasRestantes < 0)  return { className: "vencido",  label: "🔴 VENCIDO" };
+        if (diasRestantes <= 3) return { className: "proximo",  label: "🟡 PRÓXIMO DO VENCIMENTO" };
         return { className: "no-prazo", label: "NO PRAZO" };
       }
 
       function openCumprimentoModal(meta) {
         if (!meta || !meta.prazoId) return;
 
-        var inputData = $("cumpridoEmInput");
-        var inputDescricao = $("cumprimentoDescricaoInput");
+        var inputData       = $("cumpridoEmInput");
+        var inputDescricao  = $("cumprimentoDescricaoInput");
         var inputResponsavel = $("responsavelCumprimentoInput");
 
-        if (inputData) inputData.value = new Date().toISOString().slice(0, 10);
-        if (inputDescricao) inputDescricao.value = "";
+        if (inputData)       inputData.value = new Date().toISOString().slice(0, 10);
+        if (inputDescricao)  inputDescricao.value = "";
         if (inputResponsavel) inputResponsavel.value = "";
-        if (els.anexoCumprimentoInput) els.anexoCumprimentoInput.value = "";
+        if (els.anexoCumprimentoInput)  els.anexoCumprimentoInput.value = "";
         if (els.anexoCumprimentoStatus) els.anexoCumprimentoStatus.textContent = "Nenhum arquivo selecionado.";
 
         state.selectedPrazoForCumprimento = {
-          prazoId: String(meta.prazoId),
+          prazoId:  String(meta.prazoId),
           processo: meta.processo || (state.selectedItem ? (state.selectedItem.processo || "") : ""),
-          cliente: meta.cliente || "",
-          tarefa: meta.tarefa || ""
+          cliente:  meta.cliente  || "",
+          tarefa:   meta.tarefa   || ""
         };
 
         els.cumprimentoModal.setAttribute("data-prazo-id", String(meta.prazoId));
@@ -1936,7 +2166,7 @@
         els.cumprimentoModal.setAttribute("aria-hidden", "true");
         els.cumprimentoModal.removeAttribute("data-prazo-id");
         state.selectedPrazoForCumprimento = null;
-        if (els.anexoCumprimentoInput) els.anexoCumprimentoInput.value = "";
+        if (els.anexoCumprimentoInput)  els.anexoCumprimentoInput.value = "";
         if (els.anexoCumprimentoStatus) els.anexoCumprimentoStatus.textContent = "Nenhum arquivo selecionado.";
         if (!els.detailsModal.classList.contains("show")) {
           document.body.classList.remove("modal-open");
@@ -1944,17 +2174,13 @@
       }
 
       async function salvarCumprimentoPrazo() {
-        var prazoId = els.cumprimentoModal.getAttribute("data-prazo-id");
-        var cumpridoEm = $("cumpridoEmInput") ? $("cumpridoEmInput").value.trim() : "";
+        var prazoId             = els.cumprimentoModal.getAttribute("data-prazo-id");
+        var cumpridoEm          = $("cumpridoEmInput")           ? $("cumpridoEmInput").value.trim()           : "";
         var cumprimentoDescricao = $("cumprimentoDescricaoInput") ? $("cumprimentoDescricaoInput").value.trim() : "";
         var responsavelCumprimento = $("responsavelCumprimentoInput") ? $("responsavelCumprimentoInput").value.trim() : "";
-        var anexoArquivo = els.anexoCumprimentoInput && els.anexoCumprimentoInput.files ? els.anexoCumprimentoInput.files[0] : null;
+        var anexoArquivo        = els.anexoCumprimentoInput && els.anexoCumprimentoInput.files ? els.anexoCumprimentoInput.files[0] : null;
 
-        if (!prazoId) {
-          alert("Prazo não identificado.");
-          return;
-        }
-
+        if (!prazoId) { alert("Prazo não identificado."); return; }
         if (!cumpridoEm || !cumprimentoDescricao || !responsavelCumprimento) {
           alert("Preencha data do cumprimento, providência adotada e responsável.");
           return;
@@ -1964,8 +2190,6 @@
         els.btnSalvarCumprimento.textContent = "Salvando...";
 
         try {
-          await ensureTestAuth();
-
           var result = await supabaseClient
             .from("prazos")
             .update({
@@ -1986,8 +2210,8 @@
             await uploadPrazoAnexoArquivo(anexoArquivo, {
               prazoId: prazoId,
               processo: state.selectedPrazoForCumprimento ? (state.selectedPrazoForCumprimento.processo || "") : "",
-              cliente: state.selectedPrazoForCumprimento ? (state.selectedPrazoForCumprimento.cliente || "") : "",
-              enviadoPor: responsavelCumprimento,
+              cliente:  state.selectedPrazoForCumprimento ? (state.selectedPrazoForCumprimento.cliente  || "") : "",
+              enviadoPor:  responsavelCumprimento,
               observacoes: cumprimentoDescricao
             });
           }
@@ -2019,30 +2243,22 @@
         }
       }
 
-
       async function fetchWorkerJson(payload) {
         var workerUrl = (els.workerUrl.value || CONFIG.defaultWorkerUrl || "").trim();
-        if (!workerUrl) {
-          throw new Error("Endpoint do Worker não informado.");
-        }
-
+        if (!workerUrl) throw new Error("Endpoint do Worker não informado.");
         var res = await fetch(workerUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-
         var data = await safeJson(res);
         if (!res.ok || (data && data.ok === false)) {
           throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
         }
-
         return data;
       }
 
       async function ensureClienteByNome(nomeCliente) {
-        await ensureTestAuth();
-
         var nome = String(nomeCliente || "").trim() || CONFIG.clientePadraoNome;
 
         var existente = await supabaseClient
@@ -2065,12 +2281,8 @@
       }
 
       async function ensureProcessoByNumero(numeroProcesso, clienteId) {
-        await ensureTestAuth();
-
         var numero = String(numeroProcesso || "").trim();
-        if (!numero) {
-          throw new Error("Número do processo não informado para vincular o documento.");
-        }
+        if (!numero) throw new Error("Número do processo não informado para vincular o documento.");
 
         var existente = await supabaseClient
           .from("processos")
@@ -2096,12 +2308,8 @@
       }
 
       async function resolveRelationalIdsForPrazo(meta) {
-        await ensureTestAuth();
-
         var prazoId = meta && meta.prazoId ? String(meta.prazoId) : "";
-        if (!prazoId) {
-          throw new Error("Prazo não identificado para vincular o documento.");
-        }
+        if (!prazoId) throw new Error("Prazo não identificado para vincular o documento.");
 
         var prazoResp = await supabaseClient
           .from("prazos")
@@ -2111,22 +2319,17 @@
 
         if (prazoResp.error) throw prazoResp.error;
 
-        var prazo = prazoResp.data || {};
-        var clienteId = prazo.cliente_id || null;
-        var processoId = prazo.processo_id || null;
+        var prazo       = prazoResp.data || {};
+        var clienteId   = prazo.cliente_id || null;
+        var processoId  = prazo.processo_id || null;
         var processoNumero = String(prazo.processo || (meta && meta.processo) || "").trim();
-        var clienteNome = String(prazo.cliente || (meta && meta.cliente) || "").trim() || CONFIG.clientePadraoNome;
+        var clienteNome    = String(prazo.cliente  || (meta && meta.cliente)  || "").trim() || CONFIG.clientePadraoNome;
 
-        if (!clienteId) {
-          clienteId = await ensureClienteByNome(clienteNome);
-        }
-
-        if (!processoId) {
-          processoId = await ensureProcessoByNumero(processoNumero, clienteId);
-        }
+        if (!clienteId)  clienteId  = await ensureClienteByNome(clienteNome);
+        if (!processoId) processoId = await ensureProcessoByNumero(processoNumero, clienteId);
 
         var updatePayload = {};
-        if (!prazo.cliente_id && clienteId) updatePayload.cliente_id = clienteId;
+        if (!prazo.cliente_id  && clienteId)  updatePayload.cliente_id  = clienteId;
         if (!prazo.processo_id && processoId) updatePayload.processo_id = processoId;
 
         if (Object.keys(updatePayload).length) {
@@ -2134,15 +2337,10 @@
             .from("prazos")
             .update(updatePayload)
             .eq("id", prazoId);
-
           if (updatePrazo.error) throw updatePrazo.error;
         }
 
-        return {
-          clienteId: clienteId,
-          processoId: processoId,
-          prazoId: prazoId
-        };
+        return { clienteId, processoId, prazoId };
       }
 
       function sanitizeFileName(name) {
@@ -2158,7 +2356,7 @@
 
         var ids = await resolveRelationalIdsForPrazo(meta || {});
         var bucket = CONFIG.bucketDocumentos;
-        var nomeOriginal = file.name || "arquivo";
+        var nomeOriginal   = file.name || "arquivo";
         var nomeArmazenado = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + "__" + sanitizeFileName(nomeOriginal);
         var caminho = "cliente/" + ids.clienteId + "/processo/" + ids.processoId + "/prazos/" + ids.prazoId + "/cumprimento/" + nomeArmazenado;
 
@@ -2174,18 +2372,18 @@
         var insertDoc = await supabaseClient
           .from("documentos")
           .insert([{
-            processo_id: ids.processoId,
-            prazo_id: ids.prazoId,
-            tipo_documento: "cumprimento",
-            origem: "cumprimento",
-            nome_original: nomeOriginal,
-            nome_armazenado: nomeArmazenado,
-            bucket: bucket,
-            caminho_storage: caminho,
-            mime_type: file.type || null,
-            tamanho_bytes: Number(file.size || 0),
-            enviado_por: meta && meta.enviadoPor ? meta.enviadoPor : null,
-            observacoes: meta && meta.observacoes ? meta.observacoes : null
+            processo_id:      ids.processoId,
+            prazo_id:         ids.prazoId,
+            tipo_documento:   "cumprimento",
+            origem:           "cumprimento",
+            nome_original:    nomeOriginal,
+            nome_armazenado:  nomeArmazenado,
+            bucket:           bucket,
+            caminho_storage:  caminho,
+            mime_type:        file.type || null,
+            tamanho_bytes:    Number(file.size || 0),
+            enviado_por:      meta && meta.enviadoPor  ? meta.enviadoPor  : null,
+            observacoes:      meta && meta.observacoes ? meta.observacoes : null
           }])
           .select("id")
           .single();
@@ -2209,8 +2407,6 @@
         target.innerHTML = '<div class="process-deadlines-empty">Carregando anexos...</div>';
 
         try {
-          await ensureTestAuth();
-
           var consulta = await supabaseClient
             .from("documentos")
             .select("id,nome_original,nome_armazenado,tamanho_bytes,enviado_por,bucket,caminho_storage,criado_em")
@@ -2229,7 +2425,6 @@
             var signed = await supabaseClient.storage
               .from(anexo.bucket)
               .createSignedUrl(anexo.caminho_storage, 3600);
-
             return {
               anexo: anexo,
               signedUrl: signed && signed.data ? signed.data.signedUrl : "#"
@@ -2285,10 +2480,7 @@
           })
         };
 
-        var blob = new Blob([JSON.stringify(payload, null, 2)], {
-          type: "application/json;charset=utf-8"
-        });
-
+        var blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json;charset=utf-8" });
         var url = URL.createObjectURL(blob);
         var a = document.createElement("a");
         a.href = url;
@@ -2305,11 +2497,8 @@
         state.deadlines = {};
         saveDeadlines();
         applyLocalFiltersAndRender();
-        if (state.selectedItem) {
-          renderDetails(state.selectedItem);
-        } else {
-          closeDetailsModal();
-        }
+        if (state.selectedItem) renderDetails(state.selectedItem);
+        else closeDetailsModal();
         setMessage("Todos os prazos foram apagados.");
       }
 
