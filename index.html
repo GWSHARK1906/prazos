@@ -1326,12 +1326,18 @@
         storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
+        actionConsultarProcesso: "consultarProcesso",
+        actionListarAndamentos: "listarAndamentos",
         actionUploadPrazoAnexo: "uploadPrazoAnexo",
         actionListarPrazoAnexos: "listarPrazoAnexos",
         bucketDocumentos: "arquivos-processuais",
         clientePadraoNome: "Cliente não informado",
         tablePublicacoes: "publicacoes",
+        tableProcessos: "processos",
         fontePublicacoes: "SNAP",
+        fonteProcessos: "DATAJUD/SNAP",
+        maxProcessosPorBusca: 25,
+        maxAndamentosPorProcesso: 200,
         usarEndpointDetalhe: false
       };
 
@@ -1515,7 +1521,7 @@
         state.loading = on;
         els.btnBuscar.disabled = on;
         els.btnBuscar.innerHTML = on
-          ? '<span class="loader"></span> Consultando...'
+          ? '<span class="loader"></span> Sincronizando...'
           : "Buscar publicações";
         updateDashboard();
       }
@@ -1584,8 +1590,12 @@
 
         var desdeIso = brToIso((els.desde.value || "").trim());
         var ateIso = brToIso((els.ate.value || "").trim());
+        var termosLivres = (els.buscaLivre.value || "").trim();
+        var mensagens = [];
+        var items = [];
+        var processosDerivados = [];
 
-        var payload = {
+        var payloadPublicacoes = {
           snapAction: CONFIG.actionListarPublicacoes,
           desde: desdeIso || undefined,
           ate: ateIso || undefined,
@@ -1600,33 +1610,48 @@
         };
 
         setLoading(true);
-        setMessage("Consultando publicações via Worker...");
+        setMessage("Sincronizando publicações e processos/andamentos...");
 
         try {
-          var res = await fetch(workerUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-          });
+          try {
+            var data = await fetchWorkerJson(payloadPublicacoes);
+            items = normalizeItems(data);
+            mergePublicacoesTemporarias(items);
+            applyPublicacoesAtivas();
+            mensagens.push("Publicações consultadas: " + items.length + ".");
 
-          var data = await safeJson(res);
-
-          if (!res.ok) {
-            throw new Error(data && (data.message || data.error) || ("Erro HTTP " + res.status));
+            try {
+              await persistirPublicacoesNoBanco(items);
+              await loadPublicacoesSalvas();
+              mensagens.push("Publicações persistidas no banco.");
+            } catch (persistErr) {
+              console.error(persistErr);
+              applyPublicacoesAtivas();
+              mensagens.push("Falha ao salvar publicações no banco: " + (persistErr.message || persistErr) + ".");
+            }
+          } catch (publicacoesErr) {
+            console.error(publicacoesErr);
+            mensagens.push("Falha na busca de publicações: " + (publicacoesErr.message || publicacoesErr) + ".");
           }
 
-          var items = normalizeItems(data);
-          mergePublicacoesTemporarias(items);
-          applyPublicacoesAtivas();
-
           try {
-            await persistirPublicacoesNoBanco(items);
-            await loadPublicacoesSalvas();
-            setMessage("Consulta concluída. Publicações novas foram agregadas ao histórico salvo.");
-          } catch (persistErr) {
-            console.error(persistErr);
-            applyPublicacoesAtivas();
-            setMessage("Consulta concluída. As publicações foram exibidas na tela, mas houve falha ao salvar no banco: " + (persistErr.message || persistErr));
+            var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
+
+            processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
+            if (processosDerivados.length) {
+              mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
+            }
+
+            var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
+            if (numerosParaSincronizar.length) {
+              var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
+              mensagens.push(resultadoSync.message);
+            } else {
+              mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
+            }
+          } catch (processosErr) {
+            console.error(processosErr);
+            mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
           }
 
           state.selectedItem = null;
@@ -1636,9 +1661,8 @@
             hour: "2-digit",
             minute: "2-digit"
           });
-        } catch (err) {
-          console.error(err);
-          setMessage("Falha na consulta: " + (err.message || err));
+
+          setMessage(mensagens.join(" "));
         } finally {
           setLoading(false);
         }
@@ -2246,7 +2270,7 @@
         var tarefa       = document.getElementById("tarefaPrazoManual")  ? document.getElementById("tarefaPrazoManual").value.trim()  : "";
 
         var clienteIdParaPrazo   = await ensureClienteByNome(CONFIG.clientePadraoNome);
-        var processoIdParaPrazo  = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo);
+        var processoIdParaPrazo  = await ensureProcessoByNumero(state.selectedItem.processo || "", clienteIdParaPrazo, state.selectedItem);
 
         var payload = {
           processo: state.selectedItem.processo || "",
@@ -2460,6 +2484,389 @@
         return data;
       }
 
+      function isNumeroProcessoValido(numero) {
+        return /^\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}$/.test(String(numero || "").trim());
+      }
+
+      function extrairNumerosProcesso(texto) {
+        var matches = String(texto || "").match(/\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/g) || [];
+        var map = new Map();
+        matches.forEach(function (numero) {
+          var valor = String(numero || "").trim();
+          if (isNumeroProcessoValido(valor)) map.set(valor, true);
+        });
+        return Array.from(map.keys());
+      }
+
+      function coletarNumerosProcessoParaSincronizacao(items, processosDerivados, textoLivre) {
+        var map = new Map();
+
+        (items || []).forEach(function (item) {
+          var numero = String(item && item.processo ? item.processo : "").trim();
+          if (isNumeroProcessoValido(numero)) map.set(numero, true);
+        });
+
+        (processosDerivados || []).forEach(function (row) {
+          var numero = String(row && row.numero_processo ? row.numero_processo : "").trim();
+          if (isNumeroProcessoValido(numero)) map.set(numero, true);
+        });
+
+        extrairNumerosProcesso(textoLivre).forEach(function (numero) {
+          map.set(numero, true);
+        });
+
+        return Array.from(map.keys()).slice(0, CONFIG.maxProcessosPorBusca || 25);
+      }
+
+      function pickFirstNonEmpty() {
+        for (var i = 0; i < arguments.length; i++) {
+          var value = arguments[i];
+          if (value === undefined || value === null) continue;
+          if (typeof value === "string") {
+            if (value.trim()) return value.trim();
+            continue;
+          }
+          return value;
+        }
+        return null;
+      }
+
+      function inferirGrauPorOrgao(orgao) {
+        var texto = String(orgao || "").toLowerCase();
+        if (!texto) return "";
+        if (texto.indexOf("turma recursal") >= 0 || texto.indexOf("câmara") >= 0 || texto.indexOf("camara") >= 0 || texto.indexOf("tribunal") >= 0) {
+          return "2º grau";
+        }
+        if (texto.indexOf("vara") >= 0 || texto.indexOf("juizado") >= 0 || texto.indexOf("comarca") >= 0) {
+          return "1º grau";
+        }
+        return "";
+      }
+
+      function normalizeWorkerProcessoPayload(data) {
+        var processo =
+          data && (
+            data.processo ||
+            data.item ||
+            (Array.isArray(data.processos) ? data.processos[0] : null) ||
+            (Array.isArray(data.items) ? data.items[0] : null) ||
+            (data.data && (data.data.processo || data.data.item || (Array.isArray(data.data.items) ? data.data.items[0] : null) || (Array.isArray(data.data.processos) ? data.data.processos[0] : null))) ||
+            (data.result && (data.result.processo || data.result.item || (Array.isArray(data.result.items) ? data.result.items[0] : null) || (Array.isArray(data.result.processos) ? data.result.processos[0] : null))) ||
+            null
+          );
+
+        if (processo && typeof processo === "object" && !Array.isArray(processo)) return processo;
+        return {};
+      }
+
+      function normalizeWorkerAndamentosPayload(data) {
+        var arr =
+          data && (
+            data.andamentos ||
+            data.movimentacoes ||
+            data.items ||
+            (data.data && (data.data.andamentos || data.data.movimentacoes || data.data.items || data.data)) ||
+            (data.result && (data.result.andamentos || data.result.movimentacoes || data.result.items || data.result)) ||
+            []
+          );
+
+        return Array.isArray(arr) ? arr : [];
+      }
+
+      function toIsoDateOrNull(value) {
+        if (!value) return null;
+        var s = String(value).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) {
+          var br = s.split("/");
+          return br[2] + "-" + br[1] + "-" + br[0];
+        }
+        var d = new Date(s);
+        if (Number.isNaN(d.getTime())) return null;
+        return d.toISOString().slice(0, 10);
+      }
+
+      async function gerarHashUnicoProcesso(numeroProcesso, orgaoJulgador, grau, classeProcessual) {
+        var base = [
+          String(numeroProcesso || "").trim(),
+          String(orgaoJulgador || "").trim(),
+          String(grau || "").trim(),
+          String(classeProcessual || "").trim()
+        ].join("|");
+        return sha256Hex(base);
+      }
+
+      async function buildProcessoRowFromPublicacao(item, clienteId) {
+        var numero = String(item && item.processo ? item.processo : "").trim();
+        if (!numero) return null;
+
+        var orgaoJulgador = pickFirstNonEmpty(item && item.vara, item && item.diario, item && item.tribunal, "");
+        var classeProcessual = pickFirstNonEmpty(item && item.classe, "");
+        var grau = inferirGrauPorOrgao(orgaoJulgador);
+        var idExterno = getIdExternoValido(item && item.id ? item.id : "");
+
+        return {
+          cliente_id: clienteId || null,
+          numero_processo: numero,
+          numero_cnj: numero,
+          titulo: numero,
+          tribunal: pickFirstNonEmpty(item && item.tribunal, ""),
+          vara: pickFirstNonEmpty(item && item.vara, ""),
+          orgao_julgador: orgaoJulgador || "",
+          classe_processual: classeProcessual || "",
+          assunto: pickFirstNonEmpty(item && item.tipoAto, ""),
+          grau: grau || "",
+          dados_brutos_datajud: item && item._raw ? item._raw : (item || {}),
+          fonte_dados: CONFIG.fontePublicacoes,
+          chave_externa: idExterno,
+          id_externo: idExterno,
+          hash_unico: await gerarHashUnicoProcesso(numero, orgaoJulgador, grau, classeProcessual),
+          importado_em: new Date().toISOString(),
+          ultima_sincronizacao_em: new Date().toISOString(),
+          status_sincronizacao: "parcial_publicacao",
+          ultimo_erro_sincronizacao: null
+        };
+      }
+
+      async function persistirProcessosDerivadosDePublicacoes(items, clienteId) {
+        if (!Array.isArray(items) || !items.length) return [];
+
+        var persisted = [];
+        for (var i = 0; i < items.length; i++) {
+          var row = await buildProcessoRowFromPublicacao(items[i], clienteId);
+          if (!row) continue;
+          var processoId = await upsertProcessoNoBanco(row);
+          row.id = processoId;
+          persisted.push(row);
+        }
+        return persisted;
+      }
+
+      async function consultarProcessoNoWorker(numeroProcesso) {
+        return fetchWorkerJson({
+          snapAction: CONFIG.actionConsultarProcesso,
+          numeroProcesso: numeroProcesso,
+          numeroCNJ: numeroProcesso,
+          processoNumero: numeroProcesso,
+          processo: numeroProcesso,
+          comMetadados: true,
+          comPartes: true,
+          comAssuntos: true,
+          comClasse: true,
+          comOrgaoJulgador: true,
+          comTribunal: true,
+          comVara: true
+        });
+      }
+
+      async function consultarAndamentosNoWorker(numeroProcesso) {
+        return fetchWorkerJson({
+          snapAction: CONFIG.actionListarAndamentos,
+          numeroProcesso: numeroProcesso,
+          numeroCNJ: numeroProcesso,
+          processoNumero: numeroProcesso,
+          processo: numeroProcesso,
+          limit: CONFIG.maxAndamentosPorProcesso || 200
+        });
+      }
+
+      async function buildProcessoRowFromWorker(numeroProcesso, clienteId, processoResp, andamentosResp) {
+        var processo = normalizeWorkerProcessoPayload(processoResp);
+        var andamentos = normalizeWorkerAndamentosPayload(andamentosResp);
+        var orgaoJulgador = pickFirstNonEmpty(
+          processo.orgao_julgador,
+          processo.orgaoJulgador,
+          processo.vara,
+          processo.orgao,
+          processo.juizo,
+          ""
+        );
+        var classeProcessual = pickFirstNonEmpty(
+          processo.classe_processual,
+          processo.classeProcessual,
+          processo.classe,
+          ""
+        );
+        var grau = pickFirstNonEmpty(processo.grau, inferirGrauPorOrgao(orgaoJulgador), "");
+        var idExterno = getIdExternoValido(
+          pickFirstNonEmpty(processo.id_externo, processo.idExterno, processo.id, processo.codigo, processo.chave_externa, "")
+        );
+
+        return {
+          cliente_id: clienteId || null,
+          numero_processo: numeroProcesso,
+          numero_cnj: pickFirstNonEmpty(processo.numero_cnj, processo.numeroCNJ, processo.numeroProcesso, numeroProcesso),
+          titulo: pickFirstNonEmpty(processo.titulo, processo.numeroCNJ, numeroProcesso),
+          vara: pickFirstNonEmpty(processo.vara, processo.juizo, ""),
+          tribunal: pickFirstNonEmpty(processo.tribunal, processo.siglaTribunal, ""),
+          comarca: pickFirstNonEmpty(processo.comarca, ""),
+          parte_contraria: pickFirstNonEmpty(processo.parte_contraria, processo.parteContraria, processo.poloPassivo, processo.reu, ""),
+          orgao_julgador: orgaoJulgador || "",
+          valor_causa: pickFirstNonEmpty(processo.valor_causa, processo.valorCausa, null),
+          classe_processual: classeProcessual || "",
+          assunto: pickFirstNonEmpty(processo.assunto, processo.assuntos, ""),
+          grau: grau || "",
+          data_ajuizamento: toIsoDateOrNull(pickFirstNonEmpty(processo.data_ajuizamento, processo.dataAjuizamento, processo.data_distribuicao, processo.dataDistribuicao, null)),
+          ultima_atualizacao_datajud: new Date().toISOString(),
+          dados_brutos_datajud: {
+            processo: processoResp || null,
+            andamentos: andamentosResp || null,
+            quantidade_andamentos: andamentos.length
+          },
+          fonte_dados: CONFIG.fonteProcessos,
+          chave_externa: idExterno,
+          importado_em: new Date().toISOString(),
+          ultima_sincronizacao_em: new Date().toISOString(),
+          status_sincronizacao: andamentosResp ? "sincronizado" : "sincronizado_sem_andamentos",
+          ultimo_erro_sincronizacao: null,
+          situacao: pickFirstNonEmpty(processo.situacao, processo.status, ""),
+          data_distribuicao: toIsoDateOrNull(pickFirstNonEmpty(processo.data_distribuicao, processo.dataDistribuicao, null)),
+          id_externo: idExterno,
+          hash_unico: await gerarHashUnicoProcesso(numeroProcesso, orgaoJulgador, grau, classeProcessual)
+        };
+      }
+
+      async function localizarProcessoExistente(row) {
+        if (row.id_externo) {
+          var byIdExterno = await supabaseClient
+            .from(CONFIG.tableProcessos)
+            .select("id")
+            .eq("id_externo", row.id_externo)
+            .limit(1);
+          if (byIdExterno.error) throw byIdExterno.error;
+          if (byIdExterno.data && byIdExterno.data.length) return byIdExterno.data[0];
+        }
+
+        if (row.hash_unico) {
+          var byHash = await supabaseClient
+            .from(CONFIG.tableProcessos)
+            .select("id")
+            .eq("hash_unico", row.hash_unico)
+            .limit(1);
+          if (byHash.error) throw byHash.error;
+          if (byHash.data && byHash.data.length) return byHash.data[0];
+        }
+
+        if (row.numero_processo && row.orgao_julgador) {
+          var byNumeroOrgao = await supabaseClient
+            .from(CONFIG.tableProcessos)
+            .select("id")
+            .eq("numero_processo", row.numero_processo)
+            .eq("orgao_julgador", row.orgao_julgador)
+            .limit(1);
+          if (byNumeroOrgao.error) throw byNumeroOrgao.error;
+          if (byNumeroOrgao.data && byNumeroOrgao.data.length) return byNumeroOrgao.data[0];
+        }
+
+        if (row.numero_processo) {
+          var legado = await supabaseClient
+            .from(CONFIG.tableProcessos)
+            .select("id, orgao_julgador, grau, classe_processual")
+            .eq("numero_processo", row.numero_processo)
+            .limit(2);
+          if (legado.error) throw legado.error;
+          if (legado.data && legado.data.length === 1) {
+            var item = legado.data[0];
+            var orgaoVazio = !String(item.orgao_julgador || "").trim();
+            var grauVazio = !String(item.grau || "").trim();
+            var classeVazia = !String(item.classe_processual || "").trim();
+            if (orgaoVazio && grauVazio && classeVazia) return { id: item.id };
+          }
+        }
+
+        return null;
+      }
+
+      async function upsertProcessoNoBanco(row) {
+        if (!row || !row.numero_processo) throw new Error("Registro de processo inválido para persistência.");
+
+        var existente = await localizarProcessoExistente(row);
+        if (existente && existente.id) {
+          var atualizado = await supabaseClient
+            .from(CONFIG.tableProcessos)
+            .update(row)
+            .eq("id", existente.id)
+            .select("id")
+            .single();
+
+          if (atualizado.error) throw atualizado.error;
+          return atualizado.data.id;
+        }
+
+        var criado = await supabaseClient
+          .from(CONFIG.tableProcessos)
+          .insert([row])
+          .select("id")
+          .single();
+
+        if (criado.error) throw criado.error;
+        return criado.data.id;
+      }
+
+      async function sincronizarProcessoEAndamentos(numeroProcesso, clienteId) {
+        var processoResp = null;
+        var andamentosResp = null;
+        var erros = [];
+
+        try {
+          processoResp = await consultarProcessoNoWorker(numeroProcesso);
+        } catch (errProcesso) {
+          console.error(errProcesso);
+          erros.push("processo: " + (errProcesso.message || errProcesso));
+        }
+
+        try {
+          andamentosResp = await consultarAndamentosNoWorker(numeroProcesso);
+        } catch (errAndamentos) {
+          console.error(errAndamentos);
+          erros.push("andamentos: " + (errAndamentos.message || errAndamentos));
+        }
+
+        if (!processoResp && !andamentosResp) {
+          throw new Error("nenhum retorno útil do Worker para o processo " + numeroProcesso + (erros.length ? " (" + erros.join("; ") + ")" : ""));
+        }
+
+        var row = await buildProcessoRowFromWorker(numeroProcesso, clienteId, processoResp, andamentosResp);
+        if (erros.length) {
+          row.status_sincronizacao = "parcial_com_erro";
+          row.ultimo_erro_sincronizacao = erros.join(" | ");
+        }
+
+        var processoId = await upsertProcessoNoBanco(row);
+        return {
+          processoId: processoId,
+          numeroProcesso: numeroProcesso,
+          erroParcial: erros.length ? erros.join(" | ") : null
+        };
+      }
+
+      async function sincronizarProcessosEAndamentosAutonomos(numerosProcesso, clienteId) {
+        var ok = 0;
+        var falhas = 0;
+        var parciais = 0;
+
+        for (var i = 0; i < numerosProcesso.length; i++) {
+          var numero = String(numerosProcesso[i] || "").trim();
+          if (!isNumeroProcessoValido(numero)) continue;
+
+          try {
+            var resultado = await sincronizarProcessoEAndamentos(numero, clienteId);
+            if (resultado.erroParcial) parciais += 1;
+            ok += 1;
+          } catch (err) {
+            console.error(err);
+            falhas += 1;
+          }
+        }
+
+        return {
+          ok: ok,
+          falhas: falhas,
+          parciais: parciais,
+          message: "Processos/andamentos autônomos: " + ok + " sincronizado(s), " + parciais + " parcial(is) e " + falhas + " falha(s)."
+        };
+      }
+
       async function ensureClienteByNome(nomeCliente) {
         var nome = String(nomeCliente || "").trim() || CONFIG.clientePadraoNome;
 
@@ -2482,31 +2889,29 @@
         return criado.data.id;
       }
 
-      async function ensureProcessoByNumero(numeroProcesso, clienteId) {
+      async function ensureProcessoByNumero(numeroProcesso, clienteId, meta) {
         var numero = String(numeroProcesso || "").trim();
         if (!numero) throw new Error("Número do processo não informado para vincular o documento.");
 
-        var existente = await supabaseClient
-          .from("processos")
-          .select("id,cliente_id,numero_processo")
-          .eq("numero_processo", numero)
-          .limit(1);
+        var row = null;
+        if (meta) {
+          row = await buildProcessoRowFromPublicacao(meta, clienteId);
+        }
 
-        if (existente.error) throw existente.error;
-        if (existente.data && existente.data.length) return existente.data[0].id;
-
-        var criado = await supabaseClient
-          .from("processos")
-          .insert([{
+        if (!row) {
+          row = {
             cliente_id: clienteId,
             numero_processo: numero,
-            titulo: numero
-          }])
-          .select("id")
-          .single();
+            numero_cnj: numero,
+            titulo: numero,
+            fonte_dados: CONFIG.fontePublicacoes,
+            status_sincronizacao: "cadastro_minimo",
+            ultima_sincronizacao_em: new Date().toISOString(),
+            hash_unico: await gerarHashUnicoProcesso(numero, "", "", "")
+          };
+        }
 
-        if (criado.error) throw criado.error;
-        return criado.data.id;
+        return upsertProcessoNoBanco(row);
       }
 
       async function resolveRelationalIdsForPrazo(meta) {
