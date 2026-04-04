@@ -461,6 +461,24 @@
       background:#fcfbf8;
     }
 
+    .process-group-row td{
+      background:#f3efe7;
+      color:var(--text);
+      font-weight:700;
+      letter-spacing:-.01em;
+      border-bottom:1px solid var(--line);
+      padding:12px;
+    }
+
+    .process-group-row .group-sub{
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:12px;
+      font-weight:500;
+      letter-spacing:0;
+    }
+
     tbody tr.sem-efeito{
       background:#f9f8f6;
       opacity:.85;
@@ -945,10 +963,9 @@
       <section class="topbar">
         <div class="hero">
           <div class="eyebrow">Tracker de Prazos • SNAP</div>
-          <h1>Publicações e prazos,<br>sem expor a senha da API.</h1>
+          <h1>Processos, andamentos e prazos,<br>com foco no que importa.</h1>
           <p>
-            Interface refeita para consultar publicações via Worker, revisar conteúdo,
-            identificar processo, vara, partes e registrar prazo final no próprio painel.
+            Painel ajustado para carregar andamentos reais do banco, manter o número do processo sempre visível e permitir a gestão de prazos no mesmo fluxo.
           </p>
         </div>
 
@@ -973,7 +990,7 @@
             </div>
           </div>
           <div id="globalMessage" class="footer-note">
-            Faça a primeira consulta para carregar as publicações já persistidas e novas buscas via Worker.
+            Faça a primeira consulta para carregar os andamentos já persistidos no banco.
           </div>
         </div>
       </section>
@@ -982,7 +999,7 @@
         <div class="filters-header">
           <div class="filters-title">Filtros de busca</div>
           <div class="actions">
-            <button class="btn-primary" id="btnBuscar" type="button">Buscar publicações</button>
+            <button class="btn-primary" id="btnBuscar" type="button">Buscar andamentos</button>
             <button class="btn-secondary" id="btnHoje" type="button">Hoje</button>
             <button class="btn-ghost" id="btn7dias" type="button">Últimos 7 dias</button>
             <button class="btn-ghost" id="btn30dias" type="button">Últimos 30 dias</button>
@@ -1031,7 +1048,7 @@
           <div class="field span-2">
             <label for="somenteComPrazo">Exibição</label>
             <select id="somenteComPrazo">
-              <option value="todos" selected>Todas as publicações</option>
+              <option value="todos" selected>Todos os andamentos</option>
               <option value="comPrazo">Somente com prazo salvo</option>
               <option value="semPrazo">Somente sem prazo salvo</option>
             </select>
@@ -1054,7 +1071,7 @@
 
       <section class="results">
         <div class="results-head">
-          <div class="results-title">Publicações encontradas</div>
+          <div class="results-title">Andamentos encontrados</div>
           <div class="actions">
             <button class="btn-secondary" id="btnExportarJson" type="button">Exportar JSON</button>
             <button class="btn-secondary" id="btnApagarPrazos" type="button">Apagar prazos salvos</button>
@@ -1066,9 +1083,9 @@
             <thead>
               <tr>
                 <th style="width:130px;">Data</th>
-                <th style="width:160px;">Diário / Tribunal</th>
+                <th style="width:160px;">Tribunal / Órgão</th>
                 <th style="width:210px;">Processo / Vara</th>
-                <th style="width:260px;">Partes / Classe</th>
+                <th style="width:260px;">Andamento / Referência</th>
                 <th>Texto</th>
                 <th style="width:200px;">Prazo</th>
                 <th style="width:180px;">Ações</th>
@@ -1080,14 +1097,14 @@
       </section>
 
       <div class="empty" id="emptyState">
-        Nenhuma publicação para exibir no momento.
+        Nenhum andamento para exibir no momento.
       </div>
 
       <section class="layout-bottom">
         <div class="drawer">
-          <h2>Detalhes da publicação</h2>
+          <h2>Detalhes do andamento</h2>
           <div class="muted">
-            Clique em "Ver detalhes" em uma linha para abrir o conteúdo completo em janela frontal.
+            Clique em "Ver detalhes" para abrir o andamento completo.
           </div>
           <div class="details-box" id="detailsBox">
             <div class="details-empty">Os detalhes agora são exibidos em uma janela modal na frente da tela.</div>
@@ -1097,17 +1114,16 @@
         <div class="drawer">
           <h2>Regras do prazo</h2>
           <div class="muted">
-            O painel considera, por padrão, que o termo inicial do prazo é o 1º dia útil após a publicação.
-            O prazo final lançado na grade serve apenas como apoio visual temporário na sessão atual.
+            O painel considera, por padrão, que o termo inicial do prazo é o 1º dia útil após a andamento do andamento relevante. O prazo final lançado na grade serve apenas como apoio visual temporário na sessão atual.
           </div>
           <div class="details-box">
             <div class="kv">
               <div class="key">Termo inicial</div>
-              <div class="val">1º dia útil após a data da publicação</div>
+              <div class="val">1º dia útil após a data da andamento</div>
             </div>
             <div class="kv">
               <div class="key">Persistência</div>
-              <div class="val">As publicações ficam gravadas no banco. Os campos de prazo da grade não ficam salvos no navegador e servem apenas como apoio visual temporário na sessão atual.</div>
+              <div class="val">Os andamentos ficam gravados no banco. Os campos de prazo da grade não ficam salvos no navegador e servem apenas como apoio visual temporário na sessão atual.</div>
             </div>
             <div class="kv">
               <div class="key">Segurança</div>
@@ -1115,7 +1131,7 @@
             </div>
             <div class="kv">
               <div class="key">Busca</div>
-              <div class="val">Consulta feita pelo Worker, que fala com a SNAP.</div>
+              <div class="val">Exibição feita a partir do banco, após ingestão pelo Worker.</div>
             </div>
           </div>
         </div>
@@ -1129,7 +1145,7 @@
   <div id="detailsModal" class="modal-overlay" aria-hidden="true">
     <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="detailsModalTitle">
       <div class="modal-head">
-        <h2 class="modal-title" id="detailsModalTitle">Detalhes da publicação</h2>
+        <h2 class="modal-title" id="detailsModalTitle">Detalhes do andamento</h2>
         <div style="display:flex; align-items:center; gap:12px;">
           <button type="button" id="btnCriarPrazoPublicacao" style="background:#1f7a46;color:#fff;border:none;padding:12px 18px;border-radius:14px;font-weight:700;cursor:pointer;box-shadow:0 8px 18px rgba(31,122,70,.25);">Criar Prazo</button>
           <button class="modal-close" id="btnFecharModal" type="button" aria-label="Fechar">×</button>
@@ -1333,6 +1349,8 @@
         clientePadraoNome: "Cliente não informado",
         tablePublicacoes: "publicacoes",
         tableProcessos: "processos",
+        tableAndamentos: "andamentos",
+        viewAndamentosProcessos: "vw_andamentos_processos",
         fontePublicacoes: "SNAP",
         fonteProcessos: "DATAJUD/SNAP",
         maxProcessosPorBusca: 25,
@@ -1348,8 +1366,8 @@
         selectedPrazoForCumprimento: null,
         deadlines: {},
         loading: false,
-        publicacoesCarregadasDoBanco: false,
-        publicacoesTemporarias: []
+        andamentosCarregadosDoBanco: false,
+        andamentosTemporarios: []
       };
 
       function $(id) {
@@ -1483,9 +1501,9 @@
       }
 
       function handleAuthReady() {
-        if (state.publicacoesCarregadasDoBanco) return;
-        state.publicacoesCarregadasDoBanco = true;
-        loadPublicacoesSalvas();
+        if (state.andamentosCarregadosDoBanco) return;
+        state.andamentosCarregadosDoBanco = true;
+        loadAndamentosSalvos();
       }
 
       function persistWorkerUrl() {
@@ -1517,7 +1535,7 @@
         els.btnBuscar.disabled = on;
         els.btnBuscar.innerHTML = on
           ? '<span class="loader"></span> Sincronizando...'
-          : "Buscar publicações";
+          : "Buscar andamentos";
         updateDashboard();
       }
 
@@ -1573,98 +1591,7 @@
       }
 
       async function handleBuscar() {
-        var workerUrl = (els.workerUrl.value || "").trim();
-
-        if (!workerUrl) {
-          setMessage("Informe o endpoint do Worker.");
-          els.workerUrl.focus();
-          return;
-        }
-
-        persistWorkerUrl();
-
-        var desdeIso = brToIso((els.desde.value || "").trim());
-        var ateIso = brToIso((els.ate.value || "").trim());
-        var termosLivres = (els.buscaLivre.value || "").trim();
-        var mensagens = [];
-        var items = [];
-        var processosDerivados = [];
-
-        var payloadPublicacoes = {
-          snapAction: CONFIG.actionListarPublicacoes,
-          desde: desdeIso || undefined,
-          ate: ateIso || undefined,
-          limit: Number(els.limit.value || 50),
-          comTexto: els.comTexto.value === "true",
-          comProcesso: true,
-          comPartes: true,
-          comVara: true,
-          comTribunal: true,
-          comOrgaoJulgador: true,
-          comMetadados: true
-        };
-
-        setLoading(true);
-        setMessage("Sincronizando publicações e processos/andamentos...");
-
-        try {
-          try {
-            var data = await fetchWorkerJson(payloadPublicacoes);
-            items = normalizeItems(data);
-            mergePublicacoesTemporarias(items);
-            applyPublicacoesAtivas();
-            mensagens.push("Publicações consultadas: " + items.length + ".");
-
-            try {
-              await persistirPublicacoesNoBanco(items);
-              await loadPublicacoesSalvas();
-              mensagens.push("Publicações persistidas no banco.");
-            } catch (persistErr) {
-              console.error(persistErr);
-              applyPublicacoesAtivas();
-              mensagens.push("Falha ao salvar publicações no banco: " + (persistErr.message || persistErr) + ".");
-            }
-          } catch (publicacoesErr) {
-            console.error(publicacoesErr);
-            mensagens.push("Falha na busca de publicações: " + (publicacoesErr.message || publicacoesErr) + ".");
-          }
-
-          if (CONFIG.habilitarSincronizacaoAutonoma) {
-            try {
-              var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
-
-              processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
-              if (processosDerivados.length) {
-                mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
-              }
-
-              var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
-              if (numerosParaSincronizar.length) {
-                var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
-                mensagens.push(resultadoSync.message);
-              } else {
-                mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
-              }
-            } catch (processosErr) {
-              console.error(processosErr);
-              mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
-            }
-          } else {
-            mensagens.push("Sincronização autônoma de processos/andamentos desabilitada no front até a liberação da ingestão real.");
-          }
-
-          state.selectedItem = null;
-          closeDetailsModal();
-
-          els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit"
-          });
-
-          setMessage(mensagens.join(" "));
-        } finally {
-          setLoading(false);
-        }
+        return loadAndamentosSalvos();
       }
 
       async function safeJson(res) {
@@ -1727,7 +1654,7 @@
 
         var map = new Map();
 
-        (state.publicacoesTemporarias || []).forEach(function (item, index) {
+        (state.andamentosTemporarios || []).forEach(function (item, index) {
           var key = getPublicacaoClientKey(item, index);
           map.set(key, item);
         });
@@ -1737,7 +1664,7 @@
           if (!map.has(key)) map.set(key, item);
         });
 
-        state.publicacoesTemporarias = Array.from(map.values()).sort(function (a, b) {
+        state.andamentosTemporarios = Array.from(map.values()).sort(function (a, b) {
           return String(b.dataPublicacao || "").localeCompare(String(a.dataPublicacao || ""));
         });
       }
@@ -1754,7 +1681,7 @@
       function applyPublicacoesAtivas() {
         var fonte = (state.rawItems && state.rawItems.length)
           ? state.rawItems
-          : (state.publicacoesTemporarias || []);
+          : (state.andamentosTemporarios || []);
 
         state.filteredItems = [];
         renderRows([]);
@@ -1765,40 +1692,67 @@
         applyLocalFiltersAndRender();
       }
 
-      async function loadPublicacoesSalvas() {
+      async function loadAndamentosSalvos() {
+        var desdeIso = brToIso((els.desde.value || "").trim());
+        var ateIso = brToIso((els.ate.value || "").trim());
+        var limite = Number(els.limit.value || 50);
+
         try {
-          var result = await supabaseClient
-            .from(CONFIG.tablePublicacoes)
-            .select("*")
-            .order("data_publicacao", { ascending: false })
-            .order("criado_em", { ascending: false });
-
-          if (result.error) {
-            throw result.error;
-          }
-
-          state.rawItems = normalizeStoredPublicacoes(result.data || []);
+          var rows = await fetchAndamentosDoBanco({ desde: desdeIso, ate: ateIso, limite: limite });
+          state.rawItems = normalizeStoredAndamentos(rows || []);
           applyPublicacoesAtivas();
+          els.lastFetch.textContent = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
           setMessage(state.rawItems.length
-            ? (state.rawItems.length + " publicação(ões) carregada(s) do banco.")
-            : ((state.publicacoesTemporarias || []).length
-              ? ((state.publicacoesTemporarias || []).length + " publicação(ões) exibida(s) em memória.")
-              : "Nenhuma publicação salva no banco até o momento."));
+            ? (state.rawItems.length + " andamento(s) carregado(s) do banco.")
+            : "Nenhum andamento salvo no banco até o momento.");
         } catch (err) {
           console.error(err);
-          setMessage("Falha ao carregar histórico salvo: " + (err.message || err));
+          setMessage("Falha ao carregar andamentos: " + (err.message || err));
         }
       }
 
-      function normalizeStoredPublicacoes(rows) {
+      async function fetchAndamentosDoBanco(filtro) {
+        var base = supabaseClient
+          .from(CONFIG.viewAndamentosProcessos)
+          .select("*")
+          .order("data_publicacao", { ascending: false })
+          .order("criado_em", { ascending: false })
+          .limit(filtro && filtro.limite ? filtro.limite : 50);
+
+        if (filtro && filtro.desde) base = base.gte("data_publicacao", filtro.desde);
+        if (filtro && filtro.ate)   base = base.lte("data_publicacao", filtro.ate);
+
+        var result = await base;
+
+        if (result.error) {
+          var fallback = supabaseClient
+            .from(CONFIG.tableAndamentos)
+            .select("*")
+            .order("data_publicacao", { ascending: false })
+            .order("criado_em", { ascending: false })
+            .limit(filtro && filtro.limite ? filtro.limite : 50);
+
+          if (filtro && filtro.desde) fallback = fallback.gte("data_publicacao", filtro.desde);
+          if (filtro && filtro.ate)   fallback = fallback.lte("data_publicacao", filtro.ate);
+
+          result = await fallback;
+          if (result.error) throw result.error;
+        }
+
+        return result.data || [];
+      }
+
+      function normalizeStoredAndamentos(rows) {
         if (!Array.isArray(rows)) return [];
 
         return rows.map(function (row, index) {
-          var raw = parseJsonSafely(row.raw_json || row.raw || row.metadados || null);
-          var id = String(row.id_externo || row.hash_unico || row.id || ("db_" + index));
-          var orgao = row.orgao || row.tribunal || "—";
-          var processo = row.processo_numero || row.processo || "—";
+          var raw = parseJsonSafely(row.dados_brutos || row.raw_json || row.raw || row.metadados || null);
+          var id = String(row.andamento_id || row.id_externo || row.hash_unico || row.id || ("db_" + index));
+          var processo = row.processo_numero || row.andamento_numero_processo || row.numero_processo || row.processo || "—";
+          var orgao = row.orgao_julgador || row.vara || row.tribunal || row.orgao || "—";
+          var tribunal = row.tribunal || (raw && raw.tribunal) || "—";
           var texto = row.texto || "—";
+          var titulo = row.titulo || row.tipo_movimentacao || row.tipo_ato || "Andamento";
 
           return {
             _raw: raw || row,
@@ -1807,15 +1761,22 @@
             semEfeitoIntimacao: row.sem_efeito_intimacao === true,
             dataPublicacao: normalizeDateString(row.data_publicacao || row.dataPublicacao || ""),
             diario: orgao,
-            tribunal: raw && raw.tribunal ? raw.tribunal : orgao,
+            tribunal: tribunal,
             processo: processo,
-            vara: raw && raw.vara ? raw.vara : (row.vara || ""),
-            classe: raw && raw.classe ? raw.classe : (row.classe || ""),
-            tipoAto: raw && raw.tipoAto ? raw.tipoAto : (row.tipo_ato || row.tipoAto || ""),
-            partes: raw && raw.partes ? raw.partes : (row.partes || ""),
-            advogados: raw && raw.advogados ? raw.advogados : (row.advogados || ""),
-            texto: raw && raw.texto ? raw.texto : texto,
-            prazoFinal: state.deadlines[id] || ""
+            vara: row.vara || row.orgao_julgador || "",
+            classe: row.classe_processual || row.classe || "",
+            tipoAto: row.tipo_movimentacao || row.tipo_ato || row.tipoAto || titulo,
+            partes: row.partes || (raw && raw.partes) || "",
+            advogados: row.advogados || (raw && raw.advogados) || "",
+            texto: texto,
+            prazoFinal: state.deadlines[id] || "",
+            processoId: row.processo_id || null,
+            titulo: titulo,
+            grau: row.grau || "",
+            fonteDados: row.fonte_dados || "",
+            dataMovimentacao: row.data_movimentacao || "",
+            hashUnico: row.hash_unico || "",
+            orgaoJulgador: row.orgao_julgador || ""
           };
         });
       }
@@ -1993,48 +1954,42 @@
 
         els.emptyState.style.display = "none";
         var frag = document.createDocumentFragment();
+        var ultimoProcesso = null;
 
         items.forEach(function (item) {
+          var processoAtual = String(item.processo || "—");
+          if (processoAtual !== ultimoProcesso) {
+            var groupTr = document.createElement("tr");
+            groupTr.className = "process-group-row";
+            groupTr.innerHTML = '<td colspan="7">PROCESSO ' + escapeHtml(processoAtual) + '<span class="group-sub">' + escapeHtml(item.tribunal || "—") + (item.vara ? ' • ' + escapeHtml(item.vara) : '') + '</span></td>';
+            frag.appendChild(groupTr);
+            ultimoProcesso = processoAtual;
+          }
+
           var tr = document.createElement("tr");
           if (item.semEfeitoIntimacao) tr.classList.add("sem-efeito");
 
           var prazo = state.deadlines[item.id] || "";
           var badgeClass = prazo ? "ok" : "warn";
           var badgeText  = prazo ? "Prazo lançado" : "Sem prazo";
-
-          var tipoAtoBadge = "";
-          if (item.semEfeitoIntimacao) {
-            tipoAtoBadge = '<span class="badge muted" style="margin-top:4px;">Sem efeito</span>';
-          } else if (item.tipoAto && item.tipoAto !== "Outro") {
-            var tipoClass = item.tipoAto === "Intimação" ? "info" :
-                            item.tipoAto === "Despacho"  ? "warn" :
-                            item.tipoAto === "Sentença"  ? "danger" :
-                            item.tipoAto === "Decisão"   ? "danger" : "";
-            if (tipoClass) {
-              tipoAtoBadge = '<span class="badge ' + tipoClass + '" style="margin-top:4px;">' + escapeHtml(item.tipoAto) + '</span>';
-            }
-          }
-
-          var varaTexto   = item.vara || "";
-          var classeTexto = item.classe || "";
-          var partesTexto = item.partes || "—";
+          var ato = item.tipoAto || item.titulo || "Andamento";
 
           tr.innerHTML = ''
             + '<td>'
             + '  <div class="cell-title">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div>'
-            + '  <div class="cell-sub mono">ID ' + escapeHtml(item.id) + '</div>'
+            + '  <div class="cell-sub mono">' + escapeHtml(item.dataMovimentacao ? String(item.dataMovimentacao).slice(0,16).replace("T"," ") : "") + '</div>'
             + '</td>'
             + '<td>'
             + '  <div class="cell-title">' + escapeHtml(item.tribunal || "—") + '</div>'
+            + '  <div class="cell-sub">' + escapeHtml(item.orgaoJulgador || item.vara || item.diario || "—") + '</div>'
             + '</td>'
             + '<td>'
             + '  <div class="cell-title mono">' + escapeHtml(item.processo || "—") + '</div>'
-            + '  <div class="cell-sub">' + escapeHtml(varaTexto) + '</div>'
-            + (classeTexto ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(classeTexto) + '</div>' : '')
+            + '  <div class="cell-sub">' + escapeHtml(item.vara || item.grau || "") + '</div>'
             + '</td>'
             + '<td>'
-            + '  <div class="cell-title">' + escapeHtml(truncate(partesTexto, 180)) + '</div>'
-            + (item.advogados ? '  <div class="cell-sub" style="margin-top:4px;">' + escapeHtml(truncate(item.advogados, 120)) + '</div>' : '')
+            + '  <div class="cell-title">' + escapeHtml(ato) + '</div>'
+            + '  <div class="cell-sub">' + escapeHtml(truncate(item.texto || "—", 120)) + '</div>'
             + '</td>'
             + '<td>'
             + '  <div class="text-preview">' + escapeHtml(truncate(item.texto || "—", 330)) + '</div>'
@@ -2042,7 +1997,6 @@
             + '<td>'
             + '  <div style="display:grid; gap:6px;">'
             + '    <span class="badge ' + badgeClass + '">' + badgeText + '</span>'
-            + tipoAtoBadge
             + '    <input type="date" data-deadline-id="' + escapeHtmlAttr(item.id) + '" value="' + escapeHtmlAttr(prazo) + '">'
             + '  </div>'
             + '</td>'
@@ -2069,7 +2023,7 @@
               return i.id === id ? Object.assign({}, i, { prazoFinal: value }) : i;
             });
             applyLocalFiltersAndRender();
-            setMessage(value ? ("Prazo salvo para a publicação " + id + ".") : ("Prazo removido da publicação " + id + "."));
+            setMessage(value ? ("Prazo salvo para o andamento " + id + ".") : ("Prazo removido do andamento " + id + "."));
           });
         });
 
@@ -2089,23 +2043,20 @@
             var item = state.rawItems.find(function (x) { return x.id === id; });
             if (!item) return;
             var text = [
-              "ID: " + item.id,
+              "Ref.: " + item.id,
               "Data: " + formatDateBR(item.dataPublicacao),
               "Tribunal: " + (item.tribunal || "—"),
+              "Órgão julgador: " + (item.orgaoJulgador || item.vara || "—"),
               "Processo: " + (item.processo || "—"),
-              "Vara: " + (item.vara || "—"),
-              "Classe: " + (item.classe || "—"),
-              "Tipo de ato: " + (item.tipoAto || "—"),
-              "Partes: " + (item.partes || "—"),
-              "Advogados: " + (item.advogados || "—"),
+              "Tipo de movimentação: " + (item.tipoAto || item.titulo || "—"),
               "Prazo final: " + (state.deadlines[item.id] || "—"),
-              "Sem efeito de intimação: " + (item.semEfeitoIntimacao ? "Sim" : "Não"),
               "",
               item.texto || ""
-            ].join("\n");
+            ].join("
+");
             try {
               await navigator.clipboard.writeText(text);
-              setMessage("Texto da publicação " + id + " copiado.");
+              setMessage("Texto do andamento " + id + " copiado.");
             } catch (e2) {
               setMessage("Não foi possível copiar para a área de transferência.");
             }
@@ -2118,16 +2069,13 @@
         var prazo = state.deadlines[item.id] || "—";
 
         els.detailsModalContent.innerHTML = ''
-          + '<div class="kv"><div class="key">ID</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
-          + '<div class="kv"><div class="key">Formato</div><div class="val">' + escapeHtml(item.formato || "—") + (item.semEfeitoIntimacao ? ' &nbsp;<span class="badge muted">Sem efeito</span>' : '') + '</div></div>'
-          + '<div class="kv"><div class="key">Data da publicação</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
+          + '<div class="kv"><div class="key">Referência</div><div class="val mono">' + escapeHtml(item.id) + '</div></div>'
+          + '<div class="kv"><div class="key">Data da andamento</div><div class="val">' + escapeHtml(formatDateBR(item.dataPublicacao)) + '</div></div>'
           + '<div class="kv"><div class="key">Tribunal</div><div class="val">' + escapeHtml(item.tribunal || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Órgão julgador</div><div class="val">' + escapeHtml(item.orgaoJulgador || item.vara || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Processo</div><div class="val mono">' + escapeHtml(item.processo || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Vara / Unidade</div><div class="val">' + escapeHtml(item.vara || "—") + '</div></div>'
+          + '<div class="kv"><div class="key">Tipo de movimentação</div><div class="val">' + escapeHtml(item.tipoAto || item.titulo || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Classe</div><div class="val">' + escapeHtml(item.classe || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Tipo de ato</div><div class="val">' + escapeHtml(item.tipoAto || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Partes</div><div class="val">' + escapeHtml(item.partes || "—") + '</div></div>'
-          + '<div class="kv"><div class="key">Advogados</div><div class="val">' + escapeHtml(item.advogados || "—") + '</div></div>'
           + '<div class="kv"><div class="key">Prazo final</div><div class="val">' + escapeHtml(formatDateBR(prazo)) + '</div></div>'
           + '<div class="kv"><div class="key">Texto</div><div class="val" style="white-space:pre-wrap;">' + escapeHtml(item.texto || "—") + '</div></div>'
 
@@ -2259,7 +2207,7 @@
           return;
         }
         if (!state.selectedItem) {
-          alert("Nenhuma publicação selecionada.");
+          alert("Nenhuma andamento selecionada.");
           return;
         }
 
@@ -2963,7 +2911,7 @@
         var ids = await resolveRelationalIdsForPrazo(meta || {});
         var bucket = CONFIG.bucketDocumentos;
         var nomeOriginal   = file.name || "arquivo";
-        var nomeArmazenado = (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())) + "__" + sanitizeFileName(nomeOriginal);
+        var nomeArmazenado = (crypto.randomUURef. ? crypto.randomUUID() : String(Date.now())) + "__" + sanitizeFileName(nomeOriginal);
         var caminho = "cliente/" + ids.clienteId + "/processo/" + ids.processoId + "/prazos/" + ids.prazoId + "/cumprimento/" + nomeArmazenado;
 
         var upload = await supabaseClient.storage
