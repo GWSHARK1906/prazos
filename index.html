@@ -973,7 +973,7 @@
             </div>
           </div>
           <div id="globalMessage" class="footer-note">
-            Configure o endpoint do Worker e faça a primeira consulta.
+            Faça a primeira consulta para carregar as publicações já persistidas e novas buscas via Worker.
           </div>
         </div>
       </section>
@@ -1097,17 +1097,17 @@
         <div class="drawer">
           <h2>Regras do prazo</h2>
           <div class="muted">
-            O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
-            O prazo final pode ser lançado manualmente em cada linha.
+            O painel considera, por padrão, que o termo inicial do prazo é o 1º dia útil após a publicação.
+            O prazo final lançado na grade serve apenas como apoio visual temporário na sessão atual.
           </div>
           <div class="details-box">
             <div class="kv">
               <div class="key">Termo inicial</div>
-              <div class="val">Data da publicação</div>
+              <div class="val">1º dia útil após a data da publicação</div>
             </div>
             <div class="kv">
               <div class="key">Persistência</div>
-              <div class="val">As publicações ficam gravadas no banco. Os prazos manuais desta grade permanecem no navegador.</div>
+              <div class="val">As publicações ficam gravadas no banco. Os campos de prazo da grade não ficam salvos no navegador e servem apenas como apoio visual temporário na sessão atual.</div>
             </div>
             <div class="kv">
               <div class="key">Segurança</div>
@@ -1322,8 +1322,7 @@
 
       var CONFIG = {
         defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
-        storageKeyDeadlines: "snap_tracker_deadlines_v2",
-        storageKeyWorkerUrl: "snap_worker_url",
+                storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
         actionConsultarProcesso: "consultarProcesso",
@@ -1338,7 +1337,8 @@
         fonteProcessos: "DATAJUD/SNAP",
         maxProcessosPorBusca: 25,
         maxAndamentosPorProcesso: 200,
-        usarEndpointDetalhe: false
+        usarEndpointDetalhe: false,
+        habilitarSincronizacaoAutonoma: false
       };
 
       var state = {
@@ -1346,7 +1346,7 @@
         filteredItems: [],
         selectedItem: null,
         selectedPrazoForCumprimento: null,
-        deadlines: loadDeadlines(),
+        deadlines: {},
         loading: false,
         publicacoesCarregadasDoBanco: false,
         publicacoesTemporarias: []
@@ -1493,15 +1493,10 @@
       }
 
       function loadDeadlines() {
-        try {
-          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-        } catch (e) {
-          return {};
-        }
+        return {};
       }
 
       function saveDeadlines() {
-        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
         updateDashboard();
       }
 
@@ -1634,24 +1629,28 @@
             mensagens.push("Falha na busca de publicações: " + (publicacoesErr.message || publicacoesErr) + ".");
           }
 
-          try {
-            var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
+          if (CONFIG.habilitarSincronizacaoAutonoma) {
+            try {
+              var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
 
-            processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
-            if (processosDerivados.length) {
-              mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
-            }
+              processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
+              if (processosDerivados.length) {
+                mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
+              }
 
-            var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
-            if (numerosParaSincronizar.length) {
-              var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
-              mensagens.push(resultadoSync.message);
-            } else {
-              mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
+              var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
+              if (numerosParaSincronizar.length) {
+                var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
+                mensagens.push(resultadoSync.message);
+              } else {
+                mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
+              }
+            } catch (processosErr) {
+              console.error(processosErr);
+              mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
             }
-          } catch (processosErr) {
-            console.error(processosErr);
-            mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
+          } else {
+            mensagens.push("Sincronização autônoma de processos/andamentos desabilitada no front até a liberação da ingestão real.");
           }
 
           state.selectedItem = null;
@@ -3100,13 +3099,13 @@
       }
 
       function clearAllDeadlines() {
-        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+        if (!confirm("Deseja limpar todos os prazos temporários lançados nesta sessão?")) return;
         state.deadlines = {};
         saveDeadlines();
         applyLocalFiltersAndRender();
         if (state.selectedItem) renderDetails(state.selectedItem);
         else closeDetailsModal();
-        setMessage("Todos os prazos foram apagados.");
+        setMessage("Todos os prazos temporários da sessão foram apagados.");
       }
 
       function truncate(text, max) {
