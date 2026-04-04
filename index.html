@@ -709,6 +709,67 @@
       grid-column:1 / -1;
     }
 
+    .process-andamentos-wrap{
+      margin-top:18px;
+      padding:18px;
+      border:1px solid var(--line);
+      border-radius:16px;
+      background:#fcfbf8;
+    }
+
+    .process-andamentos-title{
+      margin:0 0 14px;
+      font-size:16px;
+      font-weight:700;
+      letter-spacing:-.02em;
+    }
+
+    .process-andamentos-list{
+      display:grid;
+      gap:12px;
+    }
+
+    .process-andamento-card{
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:#fff;
+      padding:14px;
+      display:grid;
+      gap:8px;
+    }
+
+    .process-andamento-card-top{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+    }
+
+    .process-andamento-card-title{
+      font-size:14px;
+      font-weight:700;
+      line-height:1.4;
+    }
+
+    .process-andamento-card-meta{
+      display:grid;
+      gap:6px;
+      font-size:13px;
+      color:var(--text);
+      line-height:1.5;
+    }
+
+    .process-andamento-text{
+      white-space:pre-wrap;
+      line-height:1.55;
+      color:#272727;
+      background:#fcfbf8;
+      border:1px dashed #e3ddd1;
+      border-radius:12px;
+      padding:12px;
+    }
+
     .process-deadlines-wrap{
       margin-top:18px;
       padding:18px;
@@ -973,7 +1034,7 @@
             </div>
           </div>
           <div id="globalMessage" class="footer-note">
-            Configure o endpoint do Worker e faça a primeira consulta.
+            Faça a primeira consulta para carregar as publicações já persistidas e novas buscas via Worker.
           </div>
         </div>
       </section>
@@ -1097,17 +1158,17 @@
         <div class="drawer">
           <h2>Regras do prazo</h2>
           <div class="muted">
-            O painel considera, por padrão, que o termo inicial do prazo é o próprio dia da publicação.
-            O prazo final pode ser lançado manualmente em cada linha.
+            O painel considera, por padrão, que o termo inicial do prazo é o 1º dia útil após a publicação.
+            O prazo final lançado na grade serve apenas como apoio visual temporário na sessão atual.
           </div>
           <div class="details-box">
             <div class="kv">
               <div class="key">Termo inicial</div>
-              <div class="val">Data da publicação</div>
+              <div class="val">1º dia útil após a data da publicação</div>
             </div>
             <div class="kv">
               <div class="key">Persistência</div>
-              <div class="val">As publicações ficam gravadas no banco. Os prazos manuais desta grade permanecem no navegador.</div>
+              <div class="val">As publicações ficam gravadas no banco. Os campos de prazo da grade não ficam salvos no navegador e servem apenas como apoio visual temporário na sessão atual.</div>
             </div>
             <div class="kv">
               <div class="key">Segurança</div>
@@ -1322,8 +1383,7 @@
 
       var CONFIG = {
         defaultWorkerUrl: "https://snap-api.luiz-841.workers.dev/",
-        storageKeyDeadlines: "snap_tracker_deadlines_v2",
-        storageKeyWorkerUrl: "snap_worker_url",
+                storageKeyWorkerUrl: "snap_worker_url",
         actionListarPublicacoes: "listarPublicacoes",
         actionDetalharPublicacao: "detalharPublicacao",
         actionConsultarProcesso: "consultarProcesso",
@@ -1334,11 +1394,14 @@
         clientePadraoNome: "Cliente não informado",
         tablePublicacoes: "publicacoes",
         tableProcessos: "processos",
+        tableAndamentos: "andamentos",
+        viewAndamentosProcessos: "vw_andamentos_processos",
         fontePublicacoes: "SNAP",
         fonteProcessos: "DATAJUD/SNAP",
         maxProcessosPorBusca: 25,
         maxAndamentosPorProcesso: 200,
-        usarEndpointDetalhe: false
+        usarEndpointDetalhe: false,
+        habilitarSincronizacaoAutonoma: false
       };
 
       var state = {
@@ -1346,7 +1409,7 @@
         filteredItems: [],
         selectedItem: null,
         selectedPrazoForCumprimento: null,
-        deadlines: loadDeadlines(),
+        deadlines: {},
         loading: false,
         publicacoesCarregadasDoBanco: false,
         publicacoesTemporarias: []
@@ -1493,15 +1556,10 @@
       }
 
       function loadDeadlines() {
-        try {
-          return JSON.parse(localStorage.getItem(CONFIG.storageKeyDeadlines) || "{}");
-        } catch (e) {
-          return {};
-        }
+        return {};
       }
 
       function saveDeadlines() {
-        localStorage.setItem(CONFIG.storageKeyDeadlines, JSON.stringify(state.deadlines));
         updateDashboard();
       }
 
@@ -1634,24 +1692,28 @@
             mensagens.push("Falha na busca de publicações: " + (publicacoesErr.message || publicacoesErr) + ".");
           }
 
-          try {
-            var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
+          if (CONFIG.habilitarSincronizacaoAutonoma) {
+            try {
+              var clienteIdPadrao = await ensureClienteByNome(CONFIG.clientePadraoNome);
 
-            processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
-            if (processosDerivados.length) {
-              mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
-            }
+              processosDerivados = await persistirProcessosDerivadosDePublicacoes(items, clienteIdPadrao);
+              if (processosDerivados.length) {
+                mensagens.push("Processos derivados das publicações atualizados: " + processosDerivados.length + ".");
+              }
 
-            var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
-            if (numerosParaSincronizar.length) {
-              var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
-              mensagens.push(resultadoSync.message);
-            } else {
-              mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
+              var numerosParaSincronizar = coletarNumerosProcessoParaSincronizacao(items, processosDerivados, termosLivres);
+              if (numerosParaSincronizar.length) {
+                var resultadoSync = await sincronizarProcessosEAndamentosAutonomos(numerosParaSincronizar, clienteIdPadrao);
+                mensagens.push(resultadoSync.message);
+              } else {
+                mensagens.push("Processos/andamentos: nenhum número de processo elegível para sincronização autônoma.");
+              }
+            } catch (processosErr) {
+              console.error(processosErr);
+              mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
             }
-          } catch (processosErr) {
-            console.error(processosErr);
-            mensagens.push("Falha na sincronização autônoma de processos/andamentos: " + (processosErr.message || processosErr) + ".");
+          } else {
+            mensagens.push("Sincronização autônoma de processos/andamentos desabilitada no front até a liberação da ingestão real.");
           }
 
           state.selectedItem = null;
@@ -2166,7 +2228,147 @@
           + '</div>';
 
         openDetailsModal();
+        carregarAndamentosDoProcessoModal(item.processo || "");
         carregarPrazosDoProcessoModal(item.processo || "");
+      }
+
+      async function carregarAndamentosDoProcessoModal(processo) {
+        var list = document.getElementById("processAndamentosList");
+        if (!list) return;
+
+        if (!processo) {
+          list.innerHTML = '<div class="process-deadlines-empty">Nenhum número de processo disponível para consulta.</div>';
+          return;
+        }
+
+        list.innerHTML = '<div class="process-deadlines-empty">Carregando andamentos...</div>';
+
+        try {
+          var rows = await buscarAndamentosDoProcesso(processo);
+          if (!rows.length) {
+            list.innerHTML = '<div class="process-deadlines-empty">Nenhum andamento encontrado para este processo.</div>';
+            return;
+          }
+
+          list.innerHTML = rows.map(function (row, index) {
+            var item = normalizarAndamentoParaModal(row, processo, index);
+            return ''
+              + '<div class="process-andamento-card">'
+              + '  <div class="process-andamento-card-top">'
+              + '    <div class="process-andamento-card-title">' + escapeHtml(item.tipo) + '</div>'
+              + '    <span class="badge info">' + escapeHtml(item.dataExibicao) + '</span>'
+              + '  </div>'
+              + '  <div class="process-andamento-card-meta">'
+              + '    <div><strong>Processo:</strong> <span class="mono">' + escapeHtml(item.processo) + '</span></div>'
+              + '    <div><strong>Tribunal:</strong> ' + escapeHtml(item.tribunal) + '</div>'
+              + '    <div><strong>Órgão julgador:</strong> ' + escapeHtml(item.orgao) + '</div>'
+              + (item.referencia ? '    <div><strong>Referência:</strong> <span class="mono">' + escapeHtml(item.referencia) + '</span></div>' : '')
+              + '  </div>'
+              + '  <div class="process-andamento-text">' + escapeHtml(item.texto) + '</div>'
+              + '</div>';
+          }).join("");
+        } catch (err) {
+          list.innerHTML = '<div class="process-deadlines-empty">Erro ao carregar andamentos.</div>';
+          console.error(err);
+        }
+      }
+
+      async function buscarAndamentosDoProcesso(processo) {
+        var rows = [];
+
+        if (CONFIG.viewAndamentosProcessos) {
+          try {
+            var r1 = await supabaseClient
+              .from(CONFIG.viewAndamentosProcessos)
+              .select("*")
+              .eq("processo_numero", processo)
+              .order("data_publicacao", { ascending: false })
+              .order("criado_em", { ascending: false })
+              .limit(50);
+
+            if (r1.error) throw r1.error;
+            rows = rows.concat(r1.data || []);
+
+            var r2 = await supabaseClient
+              .from(CONFIG.viewAndamentosProcessos)
+              .select("*")
+              .eq("andamento_numero_processo", processo)
+              .order("data_publicacao", { ascending: false })
+              .order("criado_em", { ascending: false })
+              .limit(50);
+
+            if (r2.error) throw r2.error;
+            rows = rows.concat(r2.data || []);
+          } catch (viewErr) {
+            console.error(viewErr);
+            rows = [];
+          }
+        }
+
+        rows = deduplicarAndamentos(rows);
+
+        if (!rows.length && CONFIG.tableAndamentos) {
+          var fallback = await supabaseClient
+            .from(CONFIG.tableAndamentos)
+            .select("*")
+            .eq("numero_processo", processo)
+            .order("data_publicacao", { ascending: false })
+            .order("criado_em", { ascending: false })
+            .limit(50);
+
+          if (fallback.error) {
+            throw fallback.error;
+          }
+
+          rows = deduplicarAndamentos(fallback.data || []);
+        }
+
+        if (!rows.length) {
+          try {
+            var workerData = await consultarAndamentosNoWorker(processo);
+            var workerRows = normalizeWorkerAndamentosPayload(workerData);
+            rows = deduplicarAndamentos(workerRows || []);
+          } catch (workerErr) {
+            console.error(workerErr);
+          }
+        }
+
+        return rows;
+      }
+
+      function deduplicarAndamentos(rows) {
+        var map = new Map();
+        (rows || []).forEach(function (row, index) {
+          var key = [
+            row && (row.andamento_id || row.id || row.id_externo || row.hash_unico) ? (row.andamento_id || row.id || row.id_externo || row.hash_unico) : "",
+            row && (row.numero_processo || row.andamento_numero_processo || row.processo_numero) ? (row.numero_processo || row.andamento_numero_processo || row.processo_numero) : "",
+            row && (row.data_publicacao || row.dataMovimentacao || row.data_movimentacao) ? (row.data_publicacao || row.dataMovimentacao || row.data_movimentacao) : "",
+            normalizarTextoParaHash(row && (row.texto || row.descricao || row.movimentacao || row.conteudo) ? (row.texto || row.descricao || row.movimentacao || row.conteudo) : "") || ("idx_" + index)
+          ].join("|");
+          if (!map.has(key)) map.set(key, row);
+        });
+        return Array.from(map.values());
+      }
+
+      function normalizarAndamentoParaModal(row, processo, index) {
+        var texto = String(
+          row && (row.texto || row.descricao || row.movimentacao || row.conteudo || row.andamento)
+            ? (row.texto || row.descricao || row.movimentacao || row.conteudo || row.andamento)
+            : "—"
+        );
+        var dataBase = row && (row.data_publicacao || row.dataPublicacao || row.data_movimentacao || row.dataMovimentacao || row.timestamp)
+          ? (row.data_publicacao || row.dataPublicacao || row.data_movimentacao || row.dataMovimentacao || row.timestamp)
+          : "";
+        var dataNormalizada = normalizeDateString(String(dataBase).slice(0, 10));
+        return {
+          referencia: String(row && (row.andamento_id || row.id || row.id_externo || row.hash_unico) ? (row.andamento_id || row.id || row.id_externo || row.hash_unico) : ("and_" + index)),
+          processo: String(row && (row.numero_processo || row.andamento_numero_processo || row.processo_numero) ? (row.numero_processo || row.andamento_numero_processo || row.processo_numero) : (processo || "—")),
+          tribunal: String(row && (row.tribunal || (row._raw && row._raw.tribunal)) ? (row.tribunal || row._raw.tribunal) : "—"),
+          orgao: String(row && (row.orgao_julgador || row.vara || row.orgao || row.diario) ? (row.orgao_julgador || row.vara || row.orgao || row.diario) : "—"),
+          tipo: String(row && (row.tipo_movimentacao || row.tipoAto || row.tipo_ato || row.titulo) ? (row.tipo_movimentacao || row.tipoAto || row.tipo_ato || row.titulo) : "Andamento"),
+          texto: texto,
+          dataExibicao: dataNormalizada ? formatDateBR(dataNormalizada) : "Sem data"
+        };
       }
 
       async function carregarPrazosDoProcessoModal(processo) {
@@ -3100,13 +3302,13 @@
       }
 
       function clearAllDeadlines() {
-        if (!confirm("Deseja apagar todos os prazos salvos neste navegador?")) return;
+        if (!confirm("Deseja limpar todos os prazos temporários lançados nesta sessão?")) return;
         state.deadlines = {};
         saveDeadlines();
         applyLocalFiltersAndRender();
         if (state.selectedItem) renderDetails(state.selectedItem);
         else closeDetailsModal();
-        setMessage("Todos os prazos foram apagados.");
+        setMessage("Todos os prazos temporários da sessão foram apagados.");
       }
 
       function truncate(text, max) {
